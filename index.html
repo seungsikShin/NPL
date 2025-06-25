@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 추심 어디까지인가 - 로그인</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-pattern"></div>
+    
+    <div class="container">
+        <div class="auth-card">
+            <div class="logo">
+                <h1>내 추심 어디까지인가</h1>
+                <p>Professional Trading Platform</p>
+            </div>
+
+            <!-- 로그인 폼 -->
+            <div id="loginForm" class="auth-form">
+                <div id="loginError" class="error-message"></div>
+                
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label for="loginEmail">이메일</label>
+                        <input type="email" id="loginEmail" placeholder="이메일을 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">비밀번호</label>
+                        <input type="password" id="loginPassword" placeholder="비밀번호를 입력하세요" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">로그인</button>
+                </form>
+
+                <div class="divider">
+                    <span>또는</span>
+                </div>
+
+                <button id="googleLoginBtn" class="btn btn-secondary">Google로 로그인</button>
+
+                <div class="switch-form">
+                    계정이 없으신가요? <a href="#" id="showRegister">회원가입</a>
+                </div>
+            </div>
+
+            <!-- 회원가입 폼 -->
+            <div id="registerForm" class="auth-form hidden">
+                <div id="registerError" class="error-message"></div>
+                <div id="registerSuccess" class="success-message"></div>
+                
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label for="registerName">사용자 이름</label>
+                        <input type="text" id="registerName" placeholder="사용자 이름을 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">이메일</label>
+                        <input type="email" id="registerEmail" placeholder="이메일을 입력하세요" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">비밀번호</label>
+                        <input type="password" id="registerPassword" placeholder="비밀번호를 입력하세요 (6자 이상)" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPasswordConfirm">비밀번호 확인</label>
+                        <input type="password" id="registerPasswordConfirm" placeholder="비밀번호를 다시 입력하세요" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="registerBtn">회원가입</button>
+                </form>
+
+                <div class="switch-form">
+                    이미 계정이 있으신가요? <a href="#" id="showLogin">로그인</a>
+                </div>
+            </div>
+
+            <!-- 로그인 성공 후 화면 -->
+            <div id="userWelcome" class="user-welcome hidden">
+                <h2>환영합니다!</h2>
+                <p id="welcomeMessage">님, 성공적으로 로그인되었습니다.</p>
+                <button id="logoutBtn" class="btn btn-primary">로그아웃</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
