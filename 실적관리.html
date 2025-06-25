@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실적 관리 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0b0d;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 240px;
+            height: 100vh;
+            background: #1a1d21;
+            border-right: 1px solid #2a2f36;
+            padding: 20px 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            padding: 0 20px 30px;
+            border-bottom: 1px solid #2a2f36;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #8b9299;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: #2a2f36;
+            color: #ffffff;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            border-radius: 4px;
+            background: #3b4248;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* 메인 컨텐츠 */
+        .main-content {
+            margin-left: 240px;
+            min-height: 100vh;
+            background: #0a0b0d;
+        }
+
+        .header {
+            background: #1a1d21;
+            border-bottom: 1px solid #2a2f36;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            color: #8b9299;
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #2a2f36;
+            border-radius: 8px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        /* 카드 스타일 */
+        .card {
+            background: #1a1d21;
+            border: 1px solid #2a2f36;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #2a2f36;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* 통계 카드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #1a1d21;
+            border: 1px solid #2a2f36;
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .stat-label {
+            color: #8b9299;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            color: #22c55e;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        /* 로그인/회원가입 폼 */
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #0a0b0d;
+        }
+
+        .auth-card {
+            background: #1a1d21;
+            border: 1px solid #2a2f36;
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #8b9299;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0b0d;
+            border: 1px solid #2a2f36;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-input::placeholder {
+            color: #5a6169;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #2a2f36;
+        }
+
+        .btn-secondary:hover {
+            background: #3b4248;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        /* 알림 메시지 */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        /* 달력 */
+        .calendar-container {
+            background: #1a1d21;
+            border: 1px solid #2a2f36;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 12px;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #2a2f36;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .calendar-day-header {
+            background: #2a2f36;
+            color: #8b9299;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .calendar-day {
+            background: #1a1d21;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .calendar-day:hover {
+            background: #2a2f36;
+        }
+
+        .calendar-day.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .calendar-day.other-month {
+            color: #5a6169;
+            background: #0f1114;
+        }
+
+        /* 피드백 결과 */
+        .feedback-result {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* 테이블 */
+        .table-container {
+            background: #1a1d21;
+            border: 1px solid #2a2f36;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #2a2f36;
+        }
+
+        .table th {
+            background: #0f1114;
+            color: #8b9299;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .table tr:hover td {
+            background: rgba(42, 47, 54, 0.5);
+        }
+
+        /* 로딩 스피너 */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #2a2f36;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 숨김/보임 클래스 */
+        .hidden {
+            display: none !important;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* 특별한 아이콘들 */
+        .icon-dashboard::before { content: '📊'; }
+        .icon-performance::before { content: '📈'; }
+        .icon-calendar::before { content: '📅'; }
+        .icon-admin::before { content: '⚙️'; }
+        .icon-logout::before { content: '🚪'; }
+    </style>
+</head>
+<body>
+    <!-- 로그인 화면 -->
+    <div id="auth-section" class="section active">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1>실적 관리 시스템</h1>
+                    <p>월별 실적 관리 및 피드백 시스템에 오신 것을 환영합니다</p>
+                </div>
+
+                <!-- 로그인 폼 -->
+                <div id="login-form">
+                    <div class="alert alert-error" id="loginError"></div>
+                    <div class="alert alert-success" id="loginSuccess"></div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">사번</label>
+                        <input type="text" class="form-input" id="loginId" placeholder="A1234567" maxlength="8">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">비밀번호</label>
+                        <input type="password" class="form-input" id="loginPassword" placeholder="비밀번호를 입력하세요">
+                    </div>
+                    
+                    <button class="btn btn-full" onclick="login()">로그인</button>
+                    <button class="btn btn-secondary btn-full" onclick="showSignup()">회원가입</button>
+                </div>
+
+                <!-- 회원가입 폼 -->
+                <div id="signup-form" class="hidden">
+                    <div class="alert alert-error" id="signupError"></div>
+                    <div class="alert alert-success" id="signupSuccess"></div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">사번 (대문자 1자 + 숫자 7자)</label>
+                        <input type="text" class="form-input" id="signupId" placeholder="A1234567" maxlength="8">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">이름</label>
+                        <input type="text" class="form-input" id="signupName" placeholder="홍길동">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">이메일</label>
+                        <input type="email" class="form-input" id="signupEmail" placeholder="example@company.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">비밀번호</label>
+                        <input type="password" class="form-input" id="signupPassword" placeholder="최소 6자 이상">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">비밀번호 확인</label>
+                        <input type="password" class="form-input" id="signupPasswordConfirm" placeholder="비밀번호를 다시 입력하세요">
+                    </div>
+                    
+                    <button class="btn btn-full" onclick="signup()">회원가입</button>
+                    <button class="btn btn-secondary btn-full" onclick="showLogin()">로그인으로 돌아가기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 대시보드 -->
+    <div id="dashboard-section" class="section">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div class="logo">
+                <h1>실적 관리 시스템</h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" onclick="showDashboard()">
+                        <div class="nav-icon icon-dashboard"></div>
+                        대시보드
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="showPerformance()">
+                        <div class="nav-icon icon-performance"></div>
+                        실적 관리
+                    </a>
+                </li>
+                <li class="nav-item" id="adminNavItem" style="display: none;">
+                    <a href="#" class="nav-link" onclick="showAdmin()">
+                        <div class="nav-icon icon-admin"></div>
+                        관리자 페이지
+                    </a>
+                </li>
+                <li class="nav-item" style="margin-top: auto;">
+                    <a href="#" class="nav-link" onclick="logout()">
+                        <div class="nav-icon icon-logout"></div>
+                        로그아웃
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div class="main-content">
+            <div class="header">
+                <div class="header-left">
+                    <h2 id="pageTitle">대시보드</h2>
+                    <p class="header-subtitle" id="pageSubtitle">실적 현황을 확인하고 피드백을 요청하세요</p>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 500;" id="userName">사용자</div>
+                            <div style="font-size: 12px; color: #8b9299;" id="userRole">직원</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- 대시보드 내용 -->
+                <div id="dashboard-content">
+                    <!-- 통계 카드들 -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">이번 달 실적</div>
+                            <div class="stat-value" id="currentPerformance">0</div>
+                            <div class="stat-change" id="performanceChange">+0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">평균 실적</div>
+                            <div class="stat-value" id="averagePerformance">0</div>
+                            <div class="stat-change">지난 3개월 기준</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">목표 달성률</div>
+                            <div class="stat-value" id="achievementRate">0%</div>
+                            <div class="stat-change" id="achievementChange">목표 대비</div>
+                        </div>
+                    </div>
+
+                    <!-- 달력 카드 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">피드백 요청</h3>
+                            <div style="color: #8b9299; font-size: 14px;">날짜를 선택하고 피드백을 요청하세요</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="calendar-container">
+                                <div class="calendar-header">
+                                    <div class="calendar-nav">
+                                        <button class="btn btn-secondary" onclick="changeMonth(-1)">◀</button>
+                                        <h3 id="calendarTitle" style="margin: 0; min-width: 200px; text-align: center;">2025년 6월</h3>
+                                        <button class="btn btn-secondary" onclick="changeMonth(1)">▶</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="calendar" id="calendar">
+                                    <!-- 달력 내용이 동적으로 생성됩니다 -->
+                                </div>
+                                
+                                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <span style="color: #8b9299;">선택된 날짜: </span>
+                                        <span id="selectedDate" style="color: #ffffff;">없음</span>
+                                    </div>
+                                    <button class="btn" onclick="requestFeedback()" id="feedbackBtn" disabled>피드백 요청</button>
+                                </div>
+                            </div>
+
+                            <!-- 피드백 결과 -->
+                            <div class="feedback-result" id="feedbackResult">
+                                <h4 style="margin-bottom: 12px;">피드백 결과</h4>
+                                <div id="feedbackContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 관리자 페이지 내용 -->
+                <div id="admin-content" class="hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">전체 직원 실적 현황</h3>
+                            <div style="color: #8b9299; font-size: 14px;">모든 직원의 실적을 확인할 수 있습니다</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>사번</th>
+                                            <th>이름</th>
+                                            <th>이메일</th>
+                                            <th>이번 달 실적</th>
+                                            <th>지난 달 실적</th>
+                                            <th>등록일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminTableBody">
+                                        <!-- 동적으로 채워질 내용 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase 스크립트 -->
+    <script type="module">
+        // Firebase 초기화
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getDatabase, ref, set, get, push, update } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCl-5prm0fTyPYiIFD6QBMS82TBfqKL2Ng",
+            authDomain: "ai-backend-33b58.firebaseapp.com",
+            databaseURL: "https://ai-backend-33b58-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "ai-backend-33b58",
+            storageBucket: "ai-backend-33b58.firebasestorage.app",
+            messagingSenderId: "565756816587",
+            appId: "1:565756816587:web:453333b334ee154b61bf4e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        // 전역 변수
+        window.currentUser = null;
+        window.currentMonth = new Date().getMonth();
+        window.currentYear = new Date().getFullYear();
+        window.selectedDate = null;
+
+        // 인증 상태 체크
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadUserData(user.uid);
+            } else {
+                showAuthSection();
+            }
+        });
+
+        // 사번 유효성 검사
+        function validateEmployeeId(id) {
+            const regex = /^[A-Z][0-9]{7}$/;
+            return regex.test(id);
+        }
+
+        // 회원가입 함수
+        window.signup = async function() {
+            const id = document.getElementById('signupId').value.trim();
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+
+            // 유효성 검사
+            if (!validateEmployeeId(id)) {
+                showAlert('signupError', '사번은 대문자 1자와 숫자 7자로 구성되어야 합니다. (예: A1234567)');
+                return;
+            }
+
+            if (!name || !email || !password) {
+                showAlert('signupError', '모든 필드를 입력해주세요.');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                showAlert('signupError', '비밀번호가 일치하지 않습니다.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showAlert('signupError', '비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+            }
+
+            try {
+                // 사번 중복 체크
+                const employeeRef = ref(database, `employees/${id}`);
+                const snapshot = await get(employeeRef);
+                if (snapshot.exists()) {
+                    showAlert('signupError', '이미 등록된 사번입니다.');
+                    return;
+                }
+
+                // Firebase Auth로 계정 생성
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 사용자 정보 데이터베이스에 저장
+                await set(ref(database, `employees/${id}`), {
+                    uid: user.uid,
+                    name: name,
+                    email: email,
+                    employeeId: id,
+                    registeredAt: new Date().toISOString(),
+                    isAdmin: false,
+                    performance: {}
+                });
+
+                showAlert('signupSuccess', '회원가입이 완료되었습니다!');
+                setTimeout(() => {
+                    showLogin();
+                }, 2000);
+
+            } catch (error) {
+                showAlert('signupError', '회원가입 중 오류가 발생했습니다: ' + error.message);
+            }
+        };
+
+        // 로그인 함수
+        window.login = async function() {
+            const id = document.getElementById('loginId').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!validateEmployeeId(id)) {
+                showAlert('loginError', '올바른 사번 형식을 입력해주세요. (예: A1234567)');
+                return;
+            }
+
+            if (!password) {
+                showAlert('loginError', '비밀번호를 입력해주세요.');
+                return;
+            }
+
+            try {
+                // 사번으로 이메일 찾기
+                const employeeRef = ref(database, `employees/${id}`);
+                const snapshot = await get(employeeRef);
+                
+                if (!snapshot.exists()) {
+                    showAlert('loginError', '등록되지 않은 사번입니다.');
+                    return;
+                }
+
+                const userData = snapshot.val();
+                
+                // Firebase Auth로 로그인
+                await signInWithEmailAndPassword(auth, userData.email, password);
+                
+            } catch (error) {
+                showAlert('loginError', '로그인에 실패했습니다: ' + error.message);
+            }
+        };
+
+        // 사용자 데이터 로드
+        async function loadUserData(uid) {
+            try {
+                // 모든 직원 데이터에서 해당 UID 찾기
+                const employeesRef = ref(database, 'employees');
+                const snapshot = await get(employeesRef);
+                
+                if (snapshot.exists()) {
+                    const employees = snapshot.val();
+                    for (const [employeeId, data] of Object.entries(employees)) {
+                        if (data.uid === uid) {
+                            window.currentUser = {
+                                ...data,
+                                employeeId: employeeId
+                            };
+                            break;
+                        }
+                    }
+                }
+
+                if (window.currentUser) {
+                    showDashboardSection();
+                    updateUserInterface();
+                } else {
+                    showAlert('loginError', '사용자 정보를 찾을 수 없습니다.');
+                    logout();
+                }
+            } catch (error) {
+                console.error('사용자 데이터 로드 실패:', error);
+                logout();
+            }
+        }
+
+        // 사용자 인터페이스 업데이트
+        function updateUserInterface() {
+            document.getElementById('userName').textContent = window.currentUser.name;
+            document.getElementById('userAvatar').textContent = window.currentUser.employeeId.charAt(0);
+            
+            // 관리자 메뉴 표시
+            if (window.currentUser.isAdmin) {
+                document.getElementById('adminNavItem').style.display = 'block';
+                document.getElementById('userRole').textContent = '관리자';
+            }
+
+            // 현재 월 실적 표시
+            updateDashboardStats();
+            
+            // 달력 초기화
+            updateCalendar();
+
+            // 네비게이션 활성화
+            setActiveNav('dashboard');
+        }
+
+        // 대시보드 통계 업데이트
+        function updateDashboardStats() {
+            const performance = window.currentUser.performance || {};
+            const currentMonthKey = `${window.currentYear}-${String(window.currentMonth + 1).padStart(2, '0')}`;
+            const lastMonthKey = `${window.currentYear}-${String(window.currentMonth).padStart(2, '0') || '12'}`;
+            
+            const currentPerformance = performance[currentMonthKey] || 0;
+            const lastPerformance = performance[lastMonthKey] || 0;
+            
+            // 현재 실적
+            document.getElementById('currentPerformance').textContent = currentPerformance.toLocaleString();
+            
+            // 변화율 계산
+            if (lastPerformance > 0) {
+                const changeRate = ((currentPerformance - lastPerformance) / lastPerformance * 100).toFixed(1);
+                const changeElement = document.getElementById('performanceChange');
+                changeElement.textContent = `${changeRate >= 0 ? '+' : ''}${changeRate}%`;
+                changeElement.className = `stat-change ${changeRate >= 0 ? '' : 'negative'}`;
+            }
+
+            // 평균 실적 (최근 3개월)
+            const recentMonths = [];
+            for (let i = 0; i < 3; i++) {
+                const monthDate = new Date(window.currentYear, window.currentMonth - i, 1);
+                const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+                const monthPerformance = performance[monthKey] || 0;
+                if (monthPerformance > 0) recentMonths.push(monthPerformance);
+            }
+            
+            const avgPerformance = recentMonths.length > 0 
+                ? Math.round(recentMonths.reduce((a, b) => a + b, 0) / recentMonths.length)
+                : 0;
+            document.getElementById('averagePerformance').textContent = avgPerformance.toLocaleString();
+
+            // 목표 달성률 (임시로 100,000을 목표로 설정)
+            const target = 100000;
+            const achievementRate = Math.round((currentPerformance / target) * 100);
+            document.getElementById('achievementRate').textContent = achievementRate;
+            
+            const achievementElement = document.getElementById('achievementChange');
+            if (achievementRate >= 100) {
+                achievementElement.textContent = '목표 달성!';
+                achievementElement.className = 'stat-change';
+            } else {
+                achievementElement.textContent = `목표까지 ${(target - currentPerformance).toLocaleString()}`;
+                achievementElement.className = 'stat-change';
+            }
+        }
+
+        // 달력 업데이트
+        window.updateCalendar = function() {
+            const calendar = document.getElementById('calendar');
+            const title = document.getElementById('calendarTitle');
+            
+            title.textContent = `${window.currentYear}년 ${window.currentMonth + 1}월`;
+            
+            // 달력 초기화
+            calendar.innerHTML = '';
+            
+            // 요일 헤더
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            weekdays.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day-header';
+                dayElement.textContent = day;
+                calendar.appendChild(dayElement);
+            });
+
+            // 달력 날짜
+            const firstDay = new Date(window.currentYear, window.currentMonth, 1);
+            const lastDay = new Date(window.currentYear, window.currentMonth + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = cellDate.getDate();
+                
+                if (cellDate.getMonth() !== window.currentMonth) {
+                    dayElement.classList.add('other-month');
+                } else {
+                    dayElement.addEventListener('click', () => selectDate(cellDate, dayElement));
+                }
+                
+                calendar.appendChild(dayElement);
+            }
+        };
+
+        // 날짜 선택
+        window.selectDate = function(date, element) {
+            // 이전 선택 제거
+            document.querySelectorAll('.calendar-day.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 새 선택 추가
+            element.classList.add('selected');
+            window.selectedDate = date;
+            
+            document.getElementById('selectedDate').textContent = 
+                `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+            document.getElementById('feedbackBtn').disabled = false;
+        };
+
+        // 월 변경
+        window.changeMonth = function(direction) {
+            window.currentMonth += direction;
+            if (window.currentMonth < 0) {
+                window.currentMonth = 11;
+                window.currentYear--;
+            } else if (window.currentMonth > 11) {
+                window.currentMonth = 0;
+                window.currentYear++;
+            }
+            updateCalendar();
+            updateDashboardStats();
+        };
+
+        // 피드백 요청
+        window.requestFeedback = async function() {
+            if (!window.selectedDate) return;
+
+            const feedbackResult = document.getElementById('feedbackResult');
+            const feedbackContent = document.getElementById('feedbackContent');
+            
+            feedbackResult.style.display = 'block';
+            feedbackContent.innerHTML = '<div class="loading"><div class="spinner"></div><span>피드백을 처리 중입니다...</span></div>';
+
+            try {
+                // Make.com 웹훅 URL (실제 URL로 교체 필요)
+                const webhookUrl = 'YOUR_MAKE_COM_WEBHOOK_URL_HERE';
+                
+                const payload = {
+                    employeeId: window.currentUser.employeeId,
+                    name: window.currentUser.name,
+                    email: window.currentUser.email,
+                    selectedDate: window.selectedDate.toISOString(),
+                    currentMonth: `${window.currentYear}-${String(window.currentMonth + 1).padStart(2, '0')}`,
+                    timestamp: new Date().toISOString()
+                };
+
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    feedbackContent.innerHTML = `
+                        <div style="color: #86efac; font-weight: 600; margin-bottom: 12px;">✅ 피드백이 성공적으로 처리되었습니다!</div>
+                        <div style="margin-bottom: 8px;"><strong>선택 날짜:</strong> ${window.selectedDate.toLocaleDateString('ko-KR')}</div>
+                        <div style="margin-bottom: 8px;"><strong>처리 시간:</strong> ${new Date().toLocaleString('ko-KR')}</div>
+                        <div style="color: #8b9299;">결과는 이메일로도 발송됩니다.</div>
+                        ${result.message ? `<div style="margin-top: 12px; padding: 12px; background: #0a0b0d; border-radius: 6px;">${result.message}</div>` : ''}
+                    `;
+                } else {
+                    throw new Error('웹훅 호출 실패');
+                }
+                
+            } catch (error) {
+                feedbackContent.innerHTML = `
+                    <div style="color: #fca5a5; font-weight: 600; margin-bottom: 12px;">❌ 피드백 처리 중 오류가 발생했습니다</div>
+                    <div style="margin-bottom: 8px;"><strong>오류 내용:</strong> ${error.message}</div>
+                    <div style="color: #8b9299;">잠시 후 다시 시도해주세요.</div>
+                `;
+            }
+        };
+
+        // 관리자 페이지 표시
+        window.showAdmin = async function() {
+            if (!window.currentUser.isAdmin) {
+                alert('관리자 권한이 없습니다.');
+                return;
+            }
+
+            try {
+                const employeesRef = ref(database, 'employees');
+                const snapshot = await get(employeesRef);
+                
+                if (snapshot.exists()) {
+                    const employees = snapshot.val();
+                    const tableBody = document.getElementById('adminTableBody');
+                    tableBody.innerHTML = '';
+
+                    Object.entries(employees).forEach(([employeeId, data]) => {
+                        const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                        const lastMonth = `${new Date().getFullYear()}-${String(new Date().getMonth()).padStart(2, '0')}`;
+                        
+                        const currentPerformance = data.performance?.[currentMonth] || 0;
+                        const lastPerformance = data.performance?.[lastMonth] || 0;
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><strong>${employeeId}</strong></td>
+                            <td>${data.name}</td>
+                            <td style="color: #8b9299;">${data.email}</td>
+                            <td><strong>${currentPerformance.toLocaleString()}</strong></td>
+                            <td>${lastPerformance.toLocaleString()}</td>
+                            <td style="color: #8b9299;">${new Date(data.registeredAt).toLocaleDateString('ko-KR')}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+
+                showContent('admin');
+            } catch (error) {
+                alert('관리자 데이터 로드 중 오류가 발생했습니다: ' + error.message);
+            }
+        };
+
+        // 로그아웃
+        window.logout = async function() {
+            try {
+                await signOut(auth);
+                window.currentUser = null;
+                showAuthSection();
+            } catch (error) {
+                console.error('로그아웃 오류:', error);
+            }
+        };
+
+        // 페이지 표시 함수들
+        window.showLogin = function() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('signup-form').classList.add('hidden');
+            clearAlerts();
+        };
+
+        window.showSignup = function() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('signup-form').classList.remove('hidden');
+            clearAlerts();
+        };
+
+        window.showDashboard = function() {
+            showContent('dashboard');
+            setActiveNav('dashboard');
+            document.getElementById('pageTitle').textContent = '대시보드';
+            document.getElementById('pageSubtitle').textContent = '실적 현황을 확인하고 피드백을 요청하세요';
+        };
+
+        window.showPerformance = function() {
+            showContent('dashboard'); // 현재는 같은 내용
+            setActiveNav('performance');
+            document.getElementById('pageTitle').textContent = '실적 관리';
+            document.getElementById('pageSubtitle').textContent = '월별 실적을 관리하고 피드백을 받으세요';
+        };
+
+        function showAuthSection() {
+            document.getElementById('auth-section').classList.add('active');
+            document.getElementById('dashboard-section').classList.remove('active');
+        }
+
+        function showDashboardSection() {
+            document.getElementById('auth-section').classList.remove('active');
+            document.getElementById('dashboard-section').classList.add('active');
+        }
+
+        function showContent(contentType) {
+            document.getElementById('dashboard-content').classList.toggle('hidden', contentType !== 'dashboard');
+            document.getElementById('admin-content').classList.toggle('hidden', contentType !== 'admin');
+            
+            if (contentType === 'admin') {
+                document.getElementById('pageTitle').textContent = '관리자 페이지';
+                document.getElementById('pageSubtitle').textContent = '전체 직원의 실적 현황을 관리하세요';
+                setActiveNav('admin');
+            }
+        }
+
+        function setActiveNav(activeItem) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            const navMap = {
+                'dashboard': 0,
+                'performance': 1,
+                'admin': 2
+            };
+            
+            const links = document.querySelectorAll('.nav-link');
+            if (links[navMap[activeItem]]) {
+                links[navMap[activeItem]].classList.add('active');
+            }
+        }
+
+        // 알림 메시지 표시
+        function showAlert(elementId, message) {
+            clearAlerts();
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        function clearAlerts() {
+            document.querySelectorAll('.alert').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        // 관리자 계정 생성 (개발용)
+        window.createAdmin = async function() {
+            try {
+                await set(ref(database, 'employees/A0000001'), {
+                    uid: 'admin-uid',
+                    name: '관리자',
+                    email: 'admin@company.com',
+                    employeeId: 'A0000001',
+                    registeredAt: new Date().toISOString(),
+                    isAdmin: true,
+                    performance: {
+                        '2025-06': 120000,
+                        '2025-05': 95000,
+                        '2025-04': 110000
+                    }
+                });
+                console.log('관리자 계정 생성 완료');
+            } catch (error) {
+                console.error('관리자 계정 생성 실패:', error);
+            }
+        };
+
+        // 샘플 데이터 생성 (개발용)
+        window.createSampleData = async function() {
+            const sampleEmployees = [
+                { id: 'A1234567', name: '김철수', email: 'kim@company.com' },
+                { id: 'B2345678', name: '이영희', email: 'lee@company.com' },
+                { id: 'C3456789', name: '박민수', email: 'park@company.com' }
+            ];
+
+            for (const emp of sampleEmployees) {
+                await set(ref(database, `employees/${emp.id}`), {
+                    uid: `${emp.id}-uid`,
+                    name: emp.name,
+                    email: emp.email,
+                    employeeId: emp.id,
+                    registeredAt: new Date().toISOString(),
+                    isAdmin: false,
+                    performance: {
+                        '2025-06': Math.floor(Math.random() * 50000) + 50000,
+                        '2025-05': Math.floor(Math.random() * 50000) + 50000,
+                        '2025-04': Math.floor(Math.random() * 50000) + 50000
+                    }
+                });
+            }
+            console.log('샘플 데이터 생성 완료');
+        };
+
+    </script>
+</body>
+</html>
