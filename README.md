@@ -2,6 +2,9 @@
 
 월별 실적 관리 및 AI 분석을 제공하는 웹 애플리케이션
 
+## 🚀 배포 링크
+- Production: [npl-opal.vercel.app](https://npl-opal.vercel.app)
+
 ## 기능
 - 사용자 인증 (로그인/회원가입)
 - 실적 데이터 시각화 (Radar Chart)
