@@ -54,18 +54,87 @@ const SAMPLE_GROUPS = {
     }
 };
 
-// Firebase 인증 상태 체크
-window.onAuthStateChanged(window.firebaseAuth, (user) => {
-    if (user) {
-        loadUserData(user.uid);
+// Firebase 초기화 대기 및 인증 상태 체크
+function initializeApp() {
+    if (window.firebaseInitialized) {
+        setupFirebaseAuth();
     } else {
-        showAuthSection();
-        if (window.logoutTimer) {
-            clearInterval(window.logoutTimer);
-            window.logoutTimer = null;
-        }
+        window.addEventListener('firebaseReady', setupFirebaseAuth);
     }
-});
+}
+
+function setupFirebaseAuth() {
+    // Firebase 인증 상태 체크
+    window.onAuthStateChanged(window.firebaseAuth, (user) => {
+        if (user) {
+            console.log('사용자 로그인됨:', user.uid);
+            loadUserData(user.uid);
+        } else {
+            console.log('사용자 로그아웃됨');
+            showAuthSection();
+            if (window.logoutTimer) {
+                clearInterval(window.logoutTimer);
+                window.logoutTimer = null;
+            }
+        }
+    });
+    
+    // 샘플 데이터가 없다면 생성
+    createInitialData();
+}
+
+// 페이지 로드 시 초기화
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+// 초기 샘플 데이터 생성 함수
+async function createInitialData() {
+    try {
+        // 테스트 사용자 데이터 확인
+        const testEmployeeRef = window.firebaseRef(window.firebaseDatabase, 'employees/A1234567');
+        const snapshot = await window.firebaseGet(testEmployeeRef);
+        
+        if (!snapshot.exists()) {
+            console.log('초기 샘플 데이터 생성 중...');
+            
+            // 샘플 직원 데이터 생성
+            const sampleEmployees = [
+                {
+                    employeeId: 'A1234567',
+                    name: '김테스트',
+                    email: 'test@company.com',
+                    isAdmin: false
+                },
+                {
+                    employeeId: 'A0000001',
+                    name: '관리자',
+                    email: 'admin@company.com',
+                    isAdmin: true
+                }
+            ];
+
+            for (const emp of sampleEmployees) {
+                await window.firebaseSet(
+                    window.firebaseRef(window.firebaseDatabase, `employees/${emp.employeeId}`),
+                    {
+                        name: emp.name,
+                        email: emp.email,
+                        employeeId: emp.employeeId,
+                        registeredAt: new Date().toISOString(),
+                        isAdmin: emp.isAdmin,
+                        performance: {
+                            '2025-07': Math.floor(Math.random() * 50000) + 70000,
+                            '2025-06': Math.floor(Math.random() * 50000) + 60000,
+                            '2025-05': Math.floor(Math.random() * 50000) + 65000
+                        }
+                    }
+                );
+            }
+            console.log('샘플 데이터 생성 완료');
+        }
+    } catch (error) {
+        console.log('샘플 데이터 생성 오류 (무시 가능):', error.message);
+    }
+}
 
 // 유틸리티 함수들
 function validateEmployeeId(id) {
@@ -76,8 +145,10 @@ function validateEmployeeId(id) {
 function showAlert(elementId, message) {
     clearAlerts();
     const element = document.getElementById(elementId);
-    element.textContent = message;
-    element.style.display = 'block';
+    if (element) {
+        element.textContent = message;
+        element.style.display = 'block';
+    }
 }
 
 function clearAlerts() {
@@ -121,6 +192,7 @@ window.signup = async function() {
     }
 
     try {
+        // 기존 사번 중복 체크
         const employeeRef = window.firebaseRef(window.firebaseDatabase, `employees/${id}`);
         const snapshot = await window.firebaseGet(employeeRef);
         if (snapshot.exists()) {
@@ -128,9 +200,11 @@ window.signup = async function() {
             return;
         }
 
+        // Firebase 인증 계정 생성
         const userCredential = await window.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
         const user = userCredential.user;
 
+        // 데이터베이스에 사용자 정보 저장
         await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `employees/${id}`), {
             uid: user.uid,
             name: name,
@@ -138,7 +212,11 @@ window.signup = async function() {
             employeeId: id,
             registeredAt: new Date().toISOString(),
             isAdmin: false,
-            performance: {}
+            performance: {
+                '2025-07': 0,
+                '2025-06': 0,
+                '2025-05': 0
+            }
         });
 
         showAlert('signupSuccess', '회원가입이 완료되었습니다!');
@@ -147,7 +225,18 @@ window.signup = async function() {
         }, 2000);
 
     } catch (error) {
-        showAlert('signupError', '회원가입 중 오류가 발생했습니다: ' + error.message);
+        console.error('회원가입 오류:', error);
+        let errorMessage = '회원가입 중 오류가 발생했습니다.';
+        
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = '이미 사용 중인 이메일입니다.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = '비밀번호가 너무 약합니다.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '올바르지 않은 이메일 형식입니다.';
+        }
+        
+        showAlert('signupError', errorMessage);
     }
 };
 
@@ -166,19 +255,37 @@ window.login = async function() {
     }
 
     try {
+        // 사번으로 사용자 정보 조회
         const employeeRef = window.firebaseRef(window.firebaseDatabase, `employees/${id}`);
         const snapshot = await window.firebaseGet(employeeRef);
         
         if (!snapshot.exists()) {
-            showAlert('loginError', '등록되지 않은 사번입니다.');
+            showAlert('loginError', '등록되지 않은 사번입니다. 회원가입을 먼저 진행해주세요.');
             return;
         }
 
         const userData = snapshot.val();
+        
+        // 이메일로 로그인 시도
         await window.signInWithEmailAndPassword(window.firebaseAuth, userData.email, password);
         
+        showAlert('loginSuccess', '로그인 성공!');
+        
     } catch (error) {
-        showAlert('loginError', '로그인에 실패했습니다: ' + error.message);
+        console.error('로그인 오류:', error);
+        let errorMessage = '로그인에 실패했습니다.';
+        
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = '등록되지 않은 사용자입니다.';
+        } else if (error.code === 'auth/wrong-password') {
+            errorMessage = '비밀번호가 올바르지 않습니다.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = '올바르지 않은 이메일 형식입니다.';
+        } else if (error.code === 'auth/too-many-requests') {
+            errorMessage = '너무 많은 로그인 시도로 인해 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.';
+        }
+        
+        showAlert('loginError', errorMessage);
     }
 };
 
@@ -192,6 +299,7 @@ window.logout = async function() {
         window.currentUser = null;
         document.getElementById('logoutWarningModal').classList.remove('show');
         showAuthSection();
+        showAlert('loginSuccess', '로그아웃되었습니다.');
     } catch (error) {
         console.error('로그아웃 오류:', error);
     }
@@ -224,26 +332,36 @@ function updateTimerDisplay() {
     const timerDisplay = document.getElementById('timerDisplay');
     const timerElement = document.getElementById('logoutTimer');
     
-    timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    if (timerDisplay) {
+        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
     
-    if (window.logoutSeconds <= 60) {
-        timerElement.className = 'logout-timer danger';
-    } else if (window.logoutSeconds <= 180) {
-        timerElement.className = 'logout-timer warning';
-    } else {
-        timerElement.className = 'logout-timer';
+    if (timerElement) {
+        if (window.logoutSeconds <= 60) {
+            timerElement.className = 'logout-timer danger';
+        } else if (window.logoutSeconds <= 180) {
+            timerElement.className = 'logout-timer warning';
+        } else {
+            timerElement.className = 'logout-timer';
+        }
     }
 }
 
 function showLogoutWarning() {
     window.warningShown = true;
-    document.getElementById('logoutWarningModal').classList.add('show');
+    const modal = document.getElementById('logoutWarningModal');
+    if (modal) {
+        modal.classList.add('show');
+    }
 }
 
 window.extendSession = function() {
     window.logoutSeconds = 600;
     window.warningShown = false;
-    document.getElementById('logoutWarningModal').classList.remove('show');
+    const modal = document.getElementById('logoutWarningModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
     updateTimerDisplay();
 };
 
@@ -251,7 +369,10 @@ function resetTimerOnActivity() {
     if (window.currentUser && window.logoutTimer) {
         window.logoutSeconds = 600;
         window.warningShown = false;
-        document.getElementById('logoutWarningModal').classList.remove('show');
+        const modal = document.getElementById('logoutWarningModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
         updateTimerDisplay();
     }
 }
@@ -282,6 +403,7 @@ async function loadUserData(uid) {
         }
 
         if (window.currentUser) {
+            console.log('사용자 데이터 로드 완료:', window.currentUser.name);
             showDashboardSection();
             updateUserInterface();
             startLogoutTimer();
@@ -291,20 +413,27 @@ async function loadUserData(uid) {
         }
     } catch (error) {
         console.error('사용자 데이터 로드 실패:', error);
+        showAlert('loginError', '사용자 정보를 불러오는 중 오류가 발생했습니다.');
         logout();
     }
 }
 
 // UI 업데이트 함수들
 async function updateUserInterface() {
-    document.getElementById('userName').textContent = window.currentUser.name;
-    document.getElementById('userAvatar').textContent = window.currentUser.employeeId.charAt(0);
+    const userNameEl = document.getElementById('userName');
+    const userAvatarEl = document.getElementById('userAvatar');
+    const userRoleEl = document.getElementById('userRole');
+    
+    if (userNameEl) userNameEl.textContent = window.currentUser.name;
+    if (userAvatarEl) userAvatarEl.textContent = window.currentUser.employeeId.charAt(0);
     
     if (window.currentUser.isAdmin) {
-        document.getElementById('adminNavItem').style.display = 'block';
-        document.getElementById('userRole').textContent = '관리자';
+        const adminNavItem = document.getElementById('adminNavItem');
+        if (adminNavItem) adminNavItem.style.display = 'block';
+        if (userRoleEl) userRoleEl.textContent = '관리자';
     }
 
+    // 실적 데이터 로드
     const performanceResult = await loadCSVPerformanceData(window.currentUser.employeeId);
     if (performanceResult) {
         window.performanceData = performanceResult.performanceData;
@@ -328,13 +457,18 @@ function updateDashboardStats() {
     const currentPerformance = performance[currentMonthKey] || 0;
     const lastPerformance = performance[lastMonthKey] || 0;
     
-    document.getElementById('currentPerformance').textContent = currentPerformance.toLocaleString();
+    const currentPerformanceEl = document.getElementById('currentPerformance');
+    if (currentPerformanceEl) {
+        currentPerformanceEl.textContent = currentPerformance.toLocaleString();
+    }
     
     if (lastPerformance > 0) {
         const changeRate = ((currentPerformance - lastPerformance) / lastPerformance * 100).toFixed(1);
         const changeElement = document.getElementById('performanceChange');
-        changeElement.textContent = `${changeRate >= 0 ? '+' : ''}${changeRate}%`;
-        changeElement.className = `stat-change ${changeRate >= 0 ? '' : 'negative'}`;
+        if (changeElement) {
+            changeElement.textContent = `${changeRate >= 0 ? '+' : ''}${changeRate}%`;
+            changeElement.className = `stat-change ${changeRate >= 0 ? '' : 'negative'}`;
+        }
     }
 
     const recentMonths = [];
@@ -348,19 +482,29 @@ function updateDashboardStats() {
     const avgPerformance = recentMonths.length > 0 
         ? Math.round(recentMonths.reduce((a, b) => a + b, 0) / recentMonths.length)
         : 0;
-    document.getElementById('averagePerformance').textContent = avgPerformance.toLocaleString();
+    
+    const avgPerformanceEl = document.getElementById('averagePerformance');
+    if (avgPerformanceEl) {
+        avgPerformanceEl.textContent = avgPerformance.toLocaleString();
+    }
 
     const target = 100000;
     const achievementRate = Math.round((currentPerformance / target) * 100);
-    document.getElementById('achievementRate').textContent = achievementRate;
+    
+    const achievementRateEl = document.getElementById('achievementRate');
+    if (achievementRateEl) {
+        achievementRateEl.textContent = achievementRate + '%';
+    }
     
     const achievementElement = document.getElementById('achievementChange');
-    if (achievementRate >= 100) {
-        achievementElement.textContent = '목표 달성!';
-        achievementElement.className = 'stat-change';
-    } else {
-        achievementElement.textContent = `목표까지 ${(target - currentPerformance).toLocaleString()}`;
-        achievementElement.className = 'stat-change';
+    if (achievementElement) {
+        if (achievementRate >= 100) {
+            achievementElement.textContent = '목표 달성!';
+            achievementElement.className = 'stat-change';
+        } else {
+            achievementElement.textContent = `목표까지 ${(target - currentPerformance).toLocaleString()}`;
+            achievementElement.className = 'stat-change';
+        }
     }
 }
 
@@ -368,6 +512,8 @@ function updateDashboardStats() {
 window.updateCalendar = function() {
     const calendar = document.getElementById('calendar');
     const title = document.getElementById('calendarTitle');
+    
+    if (!calendar || !title) return;
     
     title.textContent = `${window.currentYear}년 ${window.currentMonth + 1}월`;
     
@@ -431,23 +577,30 @@ window.selectDate = function(date, element) {
     updateDateDisplay();
     updateCalendar();
     
-    document.getElementById('feedbackBtn').disabled = !window.startDate;
+    const feedbackBtn = document.getElementById('feedbackBtn');
+    if (feedbackBtn) {
+        feedbackBtn.disabled = !window.startDate;
+    }
 };
 
 function updateDateDisplay() {
     const startDisplay = document.getElementById('startDateDisplay');
     const endDisplay = document.getElementById('endDateDisplay');
     
-    if (window.startDate) {
-        startDisplay.textContent = window.startDate.toLocaleDateString('ko-KR');
-    } else {
-        startDisplay.textContent = '선택하세요';
+    if (startDisplay) {
+        if (window.startDate) {
+            startDisplay.textContent = window.startDate.toLocaleDateString('ko-KR');
+        } else {
+            startDisplay.textContent = '선택하세요';
+        }
     }
     
-    if (window.endDate) {
-        endDisplay.textContent = window.endDate.toLocaleDateString('ko-KR');
-    } else {
-        endDisplay.textContent = window.startDate ? '선택하세요' : '선택하세요';
+    if (endDisplay) {
+        if (window.endDate) {
+            endDisplay.textContent = window.endDate.toLocaleDateString('ko-KR');
+        } else {
+            endDisplay.textContent = window.startDate ? '선택하세요' : '선택하세요';
+        }
     }
 }
 
@@ -456,7 +609,10 @@ window.clearDateSelection = function() {
     window.endDate = null;
     updateDateDisplay();
     updateCalendar();
-    document.getElementById('feedbackBtn').disabled = true;
+    const feedbackBtn = document.getElementById('feedbackBtn');
+    if (feedbackBtn) {
+        feedbackBtn.disabled = true;
+    }
 };
 
 window.changeMonth = function(direction) {
@@ -474,57 +630,60 @@ window.changeMonth = function(direction) {
 
 // 네비게이션 및 페이지 전환
 window.showLogin = function() {
-    document.getElementById('login-form').classList.remove('hidden');
-    document.getElementById('signup-form').classList.add('hidden');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    
+    if (loginForm) loginForm.classList.remove('hidden');
+    if (signupForm) signupForm.classList.add('hidden');
     clearAlerts();
 };
 
 window.showSignup = function() {
-    document.getElementById('login-form').classList.add('hidden');
-    document.getElementById('signup-form').classList.remove('hidden');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    
+    if (loginForm) loginForm.classList.add('hidden');
+    if (signupForm) signupForm.classList.remove('hidden');
     clearAlerts();
 };
 
 window.showPerformance = function() {
     showContent('performance');
     setActiveNav('performance');
-    document.getElementById('pageTitle').textContent = '실적 관리';
-    document.getElementById('pageSubtitle').textContent = '실적 현황을 확인하고 AI 분석을 요청하세요';
+    
+    const pageTitle = document.getElementById('pageTitle');
+    const pageSubtitle = document.getElementById('pageSubtitle');
+    
+    if (pageTitle) pageTitle.textContent = '실적 관리';
+    if (pageSubtitle) pageSubtitle.textContent = '실적 현황을 확인하고 AI 분석을 요청하세요';
 };
 
 function showAuthSection() {
-    document.getElementById('auth-section').classList.add('active');
-    document.getElementById('dashboard-section').classList.remove('active');
+    const authSection = document.getElementById('auth-section');
+    const dashboardSection = document.getElementById('dashboard-section');
+    
+    if (authSection) authSection.classList.add('active');
+    if (dashboardSection) dashboardSection.classList.remove('active');
 }
 
 function showDashboardSection() {
-    document.getElementById('auth-section').classList.remove('active');
-    document.getElementById('dashboard-section').classList.add('active');
+    const authSection = document.getElementById('auth-section');
+    const dashboardSection = document.getElementById('dashboard-section');
+    
+    if (authSection) authSection.classList.remove('active');
+    if (dashboardSection) dashboardSection.classList.add('active');
 }
 
 function showContent(contentType) {
-    document.getElementById('performance-content').classList.toggle('hidden', contentType !== 'performance');
-    document.getElementById('admin-content').classList.toggle('hidden', contentType !== 'admin');
+    const performanceContent = document.getElementById('performance-content');
+    const adminContent = document.getElementById('admin-content');
+    
+    if (performanceContent) {
+        performanceContent.classList.toggle('hidden', contentType !== 'performance');
+    }
+    if (adminContent) {
+        adminContent.classList.toggle('hidden', contentType !== 'admin');
+    }
     
     if (contentType === 'admin') {
-        document.getElementById('pageTitle').textContent = '관리자 페이지';
-        document.getElementById('pageSubtitle').textContent = '전체 직원의 실적 현황을 관리하세요';
-        setActiveNav('admin');
-    }
-}
-
-function setActiveNav(activeItem) {
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    const navMap = {
-        'performance': 0,
-        'admin': 1
-    };
-    
-    const links = document.querySelectorAll('.nav-link');
-    if (links[navMap[activeItem]]) {
-        links[navMap[activeItem]].classList.add('active');
-    }
-}
+        const pageTitle = document.getElementById('pageTitle');
