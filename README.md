@@ -11,13 +11,24 @@
 - AI 기반 맞춤 제안
 - 관리자 대시보드
 - 실시간 데이터 필터링
+  
+## 📁 프로젝트 구조
+NPL/
+├── css/styles.css          # 스타일시트
+├── js/
+│   ├── firebase-config.js  # Firebase 설정
+│   ├── app.js             # 메인 앱 로직
+│   ├── performance.js     # 실적 관리 기능
+│   └── admin.js           # 관리자 기능
+└── index.html             # 메인 HTML
 
 ## 기술 스택
 - Frontend: HTML5, CSS3, Vanilla JavaScript
 - Backend: Firebase Authentication & Realtime Database
 - AI Integration: Make.com + GPT API
 - Charts: SVG + Custom Animations
-
+- Deployment: Vercel
+  
 ## 설치 및 실행
 1. 저장소 클론
 2. Firebase 설정 파일 구성
