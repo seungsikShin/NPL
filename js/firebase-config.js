@@ -13,6 +13,7 @@ const firebaseConfig = {
     appId: "1:565756816587:web:453333b334ee154b61bf4e"
 };
 
+// Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);
@@ -29,3 +30,9 @@ window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
 window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.signOut = signOut;
 window.onAuthStateChanged = onAuthStateChanged;
+
+// Firebase 초기화 완료를 알리는 이벤트 발생
+window.firebaseInitialized = true;
+window.dispatchEvent(new Event('firebaseReady'));
+
+console.log('Firebase 초기화 완료');
