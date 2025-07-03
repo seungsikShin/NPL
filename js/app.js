@@ -687,3 +687,26 @@ function showContent(contentType) {
     
     if (contentType === 'admin') {
         const pageTitle = document.getElementById('pageTitle');
+        const pageSubtitle = document.getElementById('pageSubtitle');
+        
+        if (pageTitle) pageTitle.textContent = '관리자 페이지';
+        if (pageSubtitle) pageSubtitle.textContent = '전체 직원의 실적 현황을 관리하세요';
+        setActiveNav('admin');
+    }
+}
+
+function setActiveNav(activeItem) {
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    const navMap = {
+        'performance': 0,
+        'admin': 1
+    };
+    
+    const links = document.querySelectorAll('.nav-link');
+    if (links[navMap[activeItem]]) {
+        links[navMap[activeItem]].classList.add('active');
+    }
+}
