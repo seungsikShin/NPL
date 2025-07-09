@@ -24,14 +24,89 @@ async function loadUserPerformanceData(employeeId) {
     }
 }
 
-// 실제 CSV 데이터 로드 함수 (Make.com 연동 대기)
+// 실제 Firebase에서 실적 데이터 로드
 async function loadCSVPerformanceData(employeeId) {
     try {
-        // TODO: Make.com 웹훅을 통해 CSV 데이터에서 해당 직원의 실적 추출
-        return await loadUserPerformanceData(employeeId);
+        console.log(`Firebase에서 ${employeeId} 실적 데이터 로드 중...`);
+        
+        // Firebase에서 직원 데이터 조회
+        const employeeRef = window.firebaseRef(window.firebaseDatabase, `employees/${employeeId}`);
+        const snapshot = await window.firebaseGet(employeeRef);
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+            
+            // 현재 월 실적 데이터 가져오기
+            const monthlyPerformance = userData.performance?.[currentMonth];
+            
+            if (monthlyPerformance && typeof monthlyPerformance === 'object') {
+                // 실제 Firebase 데이터 사용
+                const performanceData = {
+                    call_count: monthlyPerformance.call_count || 0,
+                    dm_count: monthlyPerformance.dm_count || 0,
+                    document_count: monthlyPerformance.document_count || 0,
+                    legal_count: monthlyPerformance.legal_count || 0,
+                    visit_count: monthlyPerformance.visit_count || 0,
+                    contact_rate: monthlyPerformance.contact_rate || 0
+                };
+                
+                // 그룹 계산 (실적 기반)
+                const groupId = calculateUserGroup(performanceData);
+                
+                console.log('Firebase 실적 데이터 로드 완료:', performanceData);
+                
+                return {
+                    performanceData: performanceData,
+                    groupId: groupId
+                };
+            } else {
+                console.log('현재 월 실적 데이터가 없음, 기본값 사용');
+                // 실적 데이터가 없으면 기본값
+                return {
+                    performanceData: {
+                        call_count: 0,
+                        dm_count: 0,
+                        document_count: 0,
+                        legal_count: 0,
+                        visit_count: 0,
+                        contact_rate: 0
+                    },
+                    groupId: 1
+                };
+            }
+        } else {
+            console.log('직원 데이터가 없음, 샘플 데이터 사용');
+            // 직원 데이터가 없으면 샘플 데이터
+            return await loadUserPerformanceData(employeeId);
+        }
+        
     } catch (error) {
-        console.error('CSV 데이터 로드 실패:', error);
+        console.error('Firebase 데이터 로드 실패:', error);
+        console.log('샘플 데이터로 대체');
         return await loadUserPerformanceData(employeeId);
+    }
+}
+
+// 실적 기반 그룹 계산 함수
+function calculateUserGroup(performanceData) {
+    const total = Object.values(performanceData)
+        .filter(val => typeof val === 'number')
+        .reduce((sum, val) => sum + val, 0);
+    
+    const callCount = performanceData.call_count || 0;
+    const visitCount = performanceData.visit_count || 0;
+    const avgScore = total / 6;
+    
+    // 그룹 분류 로직
+    if (avgScore >= 70 && callCount >= 80 && visitCount >= 70) {
+        return 1; // 균형추구형
+    } else if (callCount >= 90 || performanceData.dm_count >= 80) {
+        return 2; // 통화집중형
+    } else if (visitCount >= 80 || performanceData.legal_count >= 60) {
+        return 3; // 현장중심형
+    } else {
+        return 1; // 기본 그룹
     }
 }
 
@@ -419,3 +494,4 @@ window.requestFeedback = async function() {
         `;
     }
 };
+
