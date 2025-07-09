@@ -8,6 +8,7 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
+    console.log("🔐 OPENAI_API_KEY 존재 여부:", !!process.env.OPENAI_API_KEY);
     // CORS 헤더 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
