@@ -1,0 +1,31 @@
+{
+  "name": "performance-management-system",
+  "version": "1.0.0",
+  "description": "월별 실적 관리 및 AI 분석 시스템",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Build completed'",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "openai": "^4.28.0"
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  },
+  "keywords": [
+    "performance",
+    "management",
+    "ai",
+    "gpt",
+    "firebase",
+    "vercel"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/performance-management-system"
+  }
+}
