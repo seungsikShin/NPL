@@ -1,5 +1,512 @@
 // 관리자 페이지 관련 함수들
 
+// ===== 관리자 실적 업로드 기능 =====
+
+// OpenAI Assistant API 설정
+const OPENAI_API_KEY = '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';
+const ASSISTANT_ID = 'asst_uS8QuEgLGIw0SrWSl6yGu1Hy';
+
+// GPT Assistant API 연결 테스트
+window.testGPTConnection = async function() {
+    const statusEl = document.getElementById('apiStatus');
+    
+    try {
+        statusEl.textContent = '어시스턴트 연결 테스트 중...';
+        statusEl.style.color = '#f59e0b';
+        
+        const response = await fetch(`https://api.openai.com/v1/assistants/${ASSISTANT_ID}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'OpenAI-Beta': 'assistants=v2'
+            }
+        });
+        
+        if (response.ok) {
+            const assistant = await response.json();
+            statusEl.textContent = `✅ 어시스턴트 연결 성공 (${assistant.name})`;
+            statusEl.style.color = '#22c55e';
+        } else {
+            throw new Error(`Assistant API 오류: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('GPT Assistant API 연결 테스트 실패:', error);
+        statusEl.textContent = '❌ 연결 실패';
+        statusEl.style.color = '#ef4444';
+    }
+};
+
+// 파일 선택 이벤트 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('adminExcelFile');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const fileNameEl = document.getElementById('adminSelectedFile');
+            const processBtn = document.getElementById('adminProcessBtn');
+            
+            if (file) {
+                fileNameEl.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+                fileNameEl.style.color = '#ffffff';
+                processBtn.disabled = false;
+            } else {
+                fileNameEl.textContent = '파일이 선택되지 않음';
+                fileNameEl.style.color = '#8b9299';
+                processBtn.disabled = true;
+            }
+        });
+    }
+});
+
+// 관리자 파일 업로드 처리
+window.processAdminUpload = async function() {
+    const fileInput = document.getElementById('adminExcelFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Excel 파일을 선택해주세요.');
+        return;
+    }
+    
+    try {
+        // UI 상태 변경
+        showUploadProgress(true);
+        updateProgress(0, 0, '파일 읽는 중...');
+        
+        // 파일 내용 읽기
+        const fileContent = await readExcelFile(file);
+        updateProgress(0, 0, 'GPT Assistant API로 데이터 추출 중...');
+        
+        // GPT Assistant API로 실적 데이터 추출
+        const extractedData = await extractPerformanceWithAssistant(fileContent, file.name);
+        updateProgress(0, extractedData.length, `${extractedData.length}명의 실적 데이터 추출 완료`);
+        
+        // Firebase에 저장
+        const uploadResult = await uploadMultiplePerformanceData(extractedData);
+        
+        // 결과 표시
+        showUploadProgress(false);
+        showUploadResult(uploadResult);
+        
+        // 관리자 테이블 새로고침
+        await refreshAdminData();
+        
+    } catch (error) {
+        console.error('업로드 처리 실패:', error);
+        showUploadProgress(false);
+        alert(`업로드 처리 실패: ${error.message}`);
+    }
+};
+
+// Excel 파일 읽기
+async function readExcelFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    // CSV 파일 처리
+                    resolve(content);
+                } else {
+                    // Excel 파일의 경우 바이너리를 Base64로 변환
+                    const base64 = btoa(String.fromCharCode(...new Uint8Array(content)));
+                    resolve(base64);
+                }
+            } catch (error) {
+                reject(new Error('파일 읽기 실패: ' + error.message));
+            }
+        };
+        
+        reader.onerror = function() {
+            reject(new Error('파일 읽기 오류'));
+        };
+        
+        if (file.name.toLowerCase().endsWith('.csv')) {
+            reader.readAsText(file, 'UTF-8');
+        } else {
+            reader.readAsArrayBuffer(file);
+        }
+    });
+}
+
+// GPT Assistant API로 실적 데이터 추출
+async function extractPerformanceWithAssistant(fileContent, fileName) {
+    try {
+        // 1. Thread 생성
+        const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({})
+        });
+        
+        if (!threadResponse.ok) {
+            throw new Error(`Thread 생성 실패: ${threadResponse.status}`);
+        }
+        
+        const thread = await threadResponse.json();
+        
+        // 2. 메시지 추가
+        const messageContent = fileName.toLowerCase().endsWith('.csv') 
+            ? `다음은 직원 실적 데이터가 포함된 CSV 파일입니다:\n\n${fileContent}`
+            : `다음은 직원 실적 데이터가 포함된 Excel 파일입니다 (Base64 인코딩):\n파일명: ${fileName}\n내용: ${fileContent.substring(0, 1000)}...`;
+        
+        const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({
+                role: 'user',
+                content: messageContent
+            })
+        });
+        
+        if (!messageResponse.ok) {
+            throw new Error(`메시지 추가 실패: ${messageResponse.status}`);
+        }
+        
+        // 3. Run 실행
+        const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({
+                assistant_id: ASSISTANT_ID
+            })
+        });
+        
+        if (!runResponse.ok) {
+            throw new Error(`Run 실행 실패: ${runResponse.status}`);
+        }
+        
+        const run = await runResponse.json();
+        
+        // 4. Run 완료 대기
+        let runStatus = run;
+        let attempts = 0;
+        const maxAttempts = 30; // 최대 30초 대기
+        
+        while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
+            if (attempts >= maxAttempts) {
+                throw new Error('Assistant 응답 시간 초과');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'OpenAI-Beta': 'assistants=v2'
+                }
+            });
+            
+            runStatus = await statusResponse.json();
+            attempts++;
+            
+            updateProgress(0, 0, `Assistant 처리 중... (${attempts}초)`);
+        }
+        
+        if (runStatus.status !== 'completed') {
+            throw new Error(`Assistant 실행 실패: ${runStatus.status}`);
+        }
+        
+        // 5. 응답 메시지 가져오기
+        const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'OpenAI-Beta': 'assistants=v2'
+            }
+        });
+        
+        const messages = await messagesResponse.json();
+        const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
+        
+        if (!assistantMessage) {
+            throw new Error('Assistant 응답을 찾을 수 없습니다.');
+        }
+        
+        const responseText = assistantMessage.content[0].text.value;
+        console.log('Assistant 응답:', responseText);
+        
+        // 6. JSON 데이터 추출
+        const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
+        if (!jsonMatch) {
+            throw new Error('Assistant 응답에서 JSON 배열을 찾을 수 없습니다.');
+        }
+        
+        const extractedData = JSON.parse(jsonMatch[0]);
+        
+        if (!Array.isArray(extractedData)) {
+            throw new Error('추출된 데이터가 배열 형식이 아닙니다.');
+        }
+        
+        console.log('추출된 데이터:', extractedData);
+        return extractedData;
+        
+    } catch (error) {
+        console.error('Assistant API 오류:', error);
+        throw new Error(`실적 데이터 추출 실패: ${error.message}`);
+    }
+}
+
+// 다중 실적 데이터 Firebase 업로드
+async function uploadMultiplePerformanceData(dataArray) {
+    let successCount = 0;
+    let failCount = 0;
+    const results = [];
+    
+    for (let i = 0; i < dataArray.length; i++) {
+        const item = dataArray[i];
+        
+        try {
+            updateProgress(i + 1, dataArray.length, `${item.name || item.employeeId} 처리 중...`);
+            
+            // 실적 데이터 검증 및 업로드
+            const result = await uploadSingleEmployeePerformance(item);
+            
+            if (result.success) {
+                successCount++;
+            } else {
+                failCount++;
+                console.error(`${item.employeeId} 업로드 실패:`, result.message);
+            }
+            
+            results.push({
+                ...result,
+                employeeId: item.employeeId,
+                name: item.name || '이름없음'
+            });
+            
+            // 너무 빠른 요청 방지
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+        } catch (error) {
+            failCount++;
+            console.error(`${item.employeeId} 처리 오류:`, error);
+            results.push({
+                success: false,
+                message: error.message,
+                employeeId: item.employeeId,
+                name: item.name || '이름없음'
+            });
+        }
+        
+        // 진행률 업데이트
+        const progress = ((i + 1) / dataArray.length) * 100;
+        document.getElementById('adminProgressBar').style.width = `${progress}%`;
+    }
+    
+    updateProgress(dataArray.length, dataArray.length, `완료: 성공 ${successCount}건, 실패 ${failCount}건`);
+    
+    return {
+        success: failCount === 0,
+        successCount,
+        failCount,
+        total: dataArray.length,
+        results
+    };
+}
+
+// 개별 직원 실적 업로드
+async function uploadSingleEmployeePerformance(data) {
+    try {
+        // 데이터 검증
+        if (!data.employeeId) {
+            throw new Error('사번은 필수입니다.');
+        }
+        
+        // 실적 데이터 구성
+        const performanceData = {
+            call_count: parseInt(data.call_count) || 0,
+            dm_count: parseInt(data.dm_count) || 0,
+            document_count: parseInt(data.document_count) || 0,
+            legal_count: parseInt(data.legal_count) || 0,
+            visit_count: parseInt(data.visit_count) || 0,
+            contact_rate: parseFloat(data.contact_rate) || 0
+        };
+        
+        // 접촉률 범위 검증
+        if (performanceData.contact_rate > 100) {
+            performanceData.contact_rate = 100;
+        }
+        
+        const targetMonth = data.month || new Date().toISOString().slice(0, 7);
+        
+        // Firebase에서 직원 정보 확인/생성
+        const employeeRef = window.firebaseRef(window.firebaseDatabase, `employees/${data.employeeId}`);
+        const snapshot = await window.firebaseGet(employeeRef);
+        
+        if (!snapshot.exists()) {
+            // 직원이 없으면 새로 생성
+            await window.firebaseSet(employeeRef, {
+                employeeId: data.employeeId,
+                name: data.name || '직원',
+                email: `${data.employeeId.toLowerCase()}@company.com`,
+                registeredAt: new Date().toISOString(),
+                isAdmin: false,
+                performance: {}
+            });
+        }
+        
+        // 실적 데이터 업데이트
+        const performanceRef = window.firebaseRef(window.firebaseDatabase, `employees/${data.employeeId}/performance/${targetMonth}`);
+        
+        await window.firebaseSet(performanceRef, {
+            ...performanceData,
+            lastUpdated: new Date().toISOString(),
+            uploadMethod: 'admin_assistant_api',
+            uploadedBy: window.currentUser?.employeeId || 'admin'
+        });
+        
+        return {
+            success: true,
+            message: '업로드 완료'
+        };
+        
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message
+        };
+    }
+}
+
+// 업로드 진행 상황 표시
+function showUploadProgress(show) {
+    const progressDiv = document.getElementById('adminUploadProgress');
+    const resultDiv = document.getElementById('adminUploadResult');
+    
+    if (show) {
+        progressDiv.classList.remove('hidden');
+        resultDiv.classList.add('hidden');
+    } else {
+        progressDiv.classList.add('hidden');
+    }
+}
+
+// 진행률 업데이트
+function updateProgress(current, total, message) {
+    document.getElementById('adminProgressText').textContent = `${current} / ${total}`;
+    document.getElementById('adminProgressDetails').textContent = message;
+    
+    if (total > 0) {
+        const percentage = (current / total) * 100;
+        document.getElementById('adminProgressBar').style.width = `${percentage}%`;
+    }
+}
+
+// 업로드 결과 표시
+function showUploadResult(uploadResult) {
+    const resultDiv = document.getElementById('adminUploadResult');
+    const contentDiv = document.getElementById('adminUploadResultContent');
+    
+    const { successCount, failCount, results } = uploadResult;
+    
+    let resultHtml = `
+        <div style="margin-bottom: 16px;">
+            <div style="color: #22c55e; font-weight: 600; margin-bottom: 8px;">
+                ✅ 성공: ${successCount}명
+            </div>
+            ${failCount > 0 ? `<div style="color: #ef4444; font-weight: 600;">❌ 실패: ${failCount}명</div>` : ''}
+        </div>
+    `;
+    
+    if (failCount > 0) {
+        resultHtml += `
+            <div style="margin-top: 16px;">
+                <strong style="color: #ffffff;">실패 목록:</strong>
+                <div style="margin-top: 8px; max-height: 200px; overflow-y: auto;">
+        `;
+        
+        results.forEach(item => {
+            if (item.success === false) {
+                resultHtml += `
+                    <div style="color: #ef4444; font-size: 12px; margin-bottom: 4px;">
+                        ${item.employeeId} (${item.name}): ${item.message}
+                    </div>
+                `;
+            }
+        });
+        
+        resultHtml += '</div></div>';
+    }
+    
+    contentDiv.innerHTML = resultHtml;
+    resultDiv.classList.remove('hidden');
+}
+
+// 관리자 데이터 새로고침
+async function refreshAdminData() {
+    try {
+        // Firebase에서 실제 데이터 로드
+        const employeesRef = window.firebaseRef(window.firebaseDatabase, 'employees');
+        const snapshot = await window.firebaseGet(employeesRef);
+        
+        if (snapshot.exists()) {
+            const firebaseData = snapshot.val();
+            window.allEmployeesData = Object.values(firebaseData).map(emp => {
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                const monthlyPerformance = emp.performance?.[currentMonth] || {};
+                
+                // 실적 점수 계산
+                const scores = {
+                    call_count: monthlyPerformance.call_count || 0,
+                    dm_count: monthlyPerformance.dm_count || 0,
+                    document_count: monthlyPerformance.document_count || 0,
+                    legal_count: monthlyPerformance.legal_count || 0,
+                    visit_count: monthlyPerformance.visit_count || 0,
+                    contact_rate: monthlyPerformance.contact_rate || 0
+                };
+                
+                const totalScore = Math.round(
+                    Object.values(scores).reduce((sum, val) => sum + val, 0) / 6
+                );
+                
+                return {
+                    employeeId: emp.employeeId,
+                    name: emp.name,
+                    email: emp.email,
+                    department: emp.department || '미정',
+                    group: { id: 1, name: '일반' },
+                    scores: scores,
+                    totalScore: totalScore,
+                    registeredAt: emp.registeredAt,
+                    rank: 0
+                };
+            });
+            
+            // 순위 재계산
+            window.allEmployeesData.sort((a, b) => b.totalScore - a.totalScore);
+            window.allEmployeesData.forEach((emp, index) => {
+                emp.rank = index + 1;
+            });
+            
+            window.filteredEmployeesData = [...window.allEmployeesData];
+            
+            // UI 업데이트
+            updateAdminStats();
+            updateGroupBarChart();
+            updateAdvancedTable();
+        }
+    } catch (error) {
+        console.error('관리자 데이터 새로고침 실패:', error);
+    }
+}
+
+// ===== 기존 코드 =====
+
 // 샘플 직원 데이터 생성 함수
 function generateSampleEmployeesData() {
     const departments = ['소속1', '소속2', '소속3'];
