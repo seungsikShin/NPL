@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "월별 실적 관리 및 AI 분석 시스템",
   "main": "index.html",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'Build completed'",
-    "start": "vercel dev"
+    "start": "vercel dev",
+    "install": "npm install"
   },
   "dependencies": {
-    "openai": "^4.28.0"
+    "openai": "^4.68.0"
   },
   "devDependencies": {
     "vercel": "^33.0.0"
@@ -20,7 +24,8 @@
     "ai",
     "gpt",
     "firebase",
-    "vercel"
+    "vercel",
+    "assistant"
   ],
   "author": "Your Name",
   "license": "MIT",
