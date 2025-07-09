@@ -125,7 +125,7 @@
             </div>
 
             <div class="content">
-                <!-- 실적 관리 내용 -->
+                <!-- 실적 관리 내용 (업로드 기능 제거) -->
                 <div id="performance-content">
                     <!-- 통계 카드들 -->
                     <div class="stats-grid">
@@ -199,86 +199,6 @@
                     </div>
 
                     <div class="performance-details" id="performanceDetails"></div>
-
-                    <!-- 실적 데이터 업로드 카드 -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">실적 데이터 업로드</h3>
-                            <div style="color: #8b9299; font-size: 14px;">개별 또는 일괄 실적 데이터를 업로드하세요</div>
-                        </div>
-                        <div class="card-body">
-                            <!-- 개별 실적 입력 -->
-                            <div style="margin-bottom: 24px;">
-                                <h4 style="color: #ffffff; margin-bottom: 16px; font-size: 16px;">개별 실적 입력</h4>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                                    <div class="form-group">
-                                        <label class="form-label">통화량</label>
-                                        <input type="number" class="form-input" id="inputCallCount" placeholder="0" min="0">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">DM 발송</label>
-                                        <input type="number" class="form-input" id="inputDmCount" placeholder="0" min="0">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">초본 발급</label>
-                                        <input type="number" class="form-input" id="inputDocumentCount" placeholder="0" min="0">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">법적 조치</label>
-                                        <input type="number" class="form-input" id="inputLegalCount" placeholder="0" min="0">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">방문 횟수</label>
-                                        <input type="number" class="form-input" id="inputVisitCount" placeholder="0" min="0">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">접촉률 (%)</label>
-                                        <input type="number" class="form-input" id="inputContactRate" placeholder="0" min="0" max="100" step="0.1">
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
-                                    <div class="form-group" style="flex: 1;">
-                                        <label class="form-label">대상 월</label>
-                                        <input type="month" class="form-input" id="inputTargetMonth">
-                                    </div>
-                                    <button class="btn" onclick="uploadSinglePerformance()" style="margin-top: 24px;">실적 업로드</button>
-                                </div>
-                            </div>
-
-                            <!-- 구분선 -->
-                            <div style="border-top: 1px solid #2a2f36; margin: 24px 0; padding-top: 24px;">
-                                <h4 style="color: #ffffff; margin-bottom: 16px; font-size: 16px;">CSV 파일 일괄 업로드</h4>
-                                <div style="margin-bottom: 16px;">
-                                    <div style="color: #8b9299; font-size: 14px; margin-bottom: 8px;">
-                                        CSV 파일 형식: employeeId, call_count, dm_count, document_count, legal_count, visit_count, contact_rate, month(선택)
-                                    </div>
-                                    <div style="display: flex; gap: 12px; align-items: center;">
-                                        <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
-                                        <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">📁 CSV 파일 선택</button>
-                                        <span id="selectedFileName" style="color: #8b9299; font-size: 14px;">파일이 선택되지 않음</span>
-                                        <button class="btn" onclick="uploadBulkCSV()" id="uploadCsvBtn" disabled>일괄 업로드</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- 업로드 진행상황 -->
-                                <div id="uploadProgress" class="hidden" style="margin-top: 16px;">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                        <span style="color: #ffffff; font-size: 14px;">업로드 진행중...</span>
-                                        <span id="progressText" style="color: #8b9299; font-size: 14px;">0 / 0</span>
-                                    </div>
-                                    <div style="background: #2a2f36; border-radius: 4px; height: 8px; overflow: hidden;">
-                                        <div id="progressBar" style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 업로드 결과 -->
-                            <div id="uploadResult" class="hidden" style="margin-top: 16px;">
-                                <h4 style="color: #ffffff; margin-bottom: 12px; font-size: 16px;">업로드 결과</h4>
-                                <div id="uploadResultContent" style="background: #1a1d21; border: 1px solid #2a2f36; border-radius: 8px; padding: 16px; font-size: 14px;"></div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- AI 분석 요청 카드 -->
                     <div class="card">
@@ -371,7 +291,7 @@
                                     ⚠️ <strong>API 키가 작동하지 않는 경우:</strong><br>
                                     1. <a href="https://platform.openai.com/settings/organization/billing" target="_blank" style="color: #667eea;">OpenAI 대시보드</a>에서 결제 방법 추가<br>
                                     2. 최소 $5 크레딧 충전<br>
-                                    3. 새 API 키 생성 후 교체
+                                    3. 새 API 키 생성 후 Vercel 환경변수 업데이트
                                 </div>
                             </div>
 
@@ -421,6 +341,7 @@
                     </div>
 
                     <!-- 필터 섹션 -->
+                    <div class="filter-section">
                         <div class="filter-header">
                             <h3 style="font-size: 18px; font-weight: 600; color: #ffffff; margin: 0;">필터 및 검색</h3>
                             <div style="color: #8b9299; font-size: 14px;">조건을 설정하여 직원 실적을 조회하세요</div>
