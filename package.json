@@ -17,20 +17,5 @@
   },
   "devDependencies": {
     "vercel": "^33.0.0"
-  },
-  "keywords": [
-    "performance",
-    "management",
-    "ai",
-    "gpt",
-    "firebase",
-    "vercel",
-    "assistant"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/performance-management-system"
   }
 }
