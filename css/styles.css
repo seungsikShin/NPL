@@ -1243,6 +1243,53 @@ body {
     }
 }
 
+/* 관리자 업로드 섹션 스타일 */
+.admin-upload-section {
+    background: #1a1d21;
+    border: 1px solid #2a2f36;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.upload-header {
+    border-bottom: 1px solid #2a2f36;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.api-config-section {
+    background: #0f1114;
+    border: 1px solid #2a2f36;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.file-upload-section {
+    background: #0f1114;
+    border: 1px solid #2a2f36;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.status-success {
+    color: #22c55e;
+}
+
+.status-error {
+    color: #ef4444;
+}
+
+.status-warning {
+    color: #f59e0b;
+}
+
 /* 숨김/보임 클래스 */
 .hidden {
     display: none !important;
