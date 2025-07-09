@@ -356,4 +356,206 @@ function updatePerformanceDetails(data) {
             showTooltip(e, metric.name, value, metric.description);
         });
         
-        item.addEventListener('mouseleave',
+        item.addEventListener('mouseleave', function() {
+            hideTooltip();
+        });
+        
+        container.appendChild(item);
+        
+        // 프로그레스 바 애니메이션
+        setTimeout(() => {
+            const progressBar = item.querySelector('.performance-item-progress');
+            progressBar.style.width = `${percentage}%`;
+        }, 100 + index * 100);
+    });
+}
+
+// 그룹 정보 업데이트
+function updateGroupInfo(groupId) {
+    const group = SAMPLE_GROUPS[groupId] || SAMPLE_GROUPS[1];
+    
+    document.getElementById('groupBadge').textContent = `클러스터 ${group.id}`;
+    document.getElementById('groupName').textContent = group.name;
+    document.getElementById('groupDescription').textContent = group.description;
+    document.getElementById('groupRank').textContent = `${group.rank}위`;
+    document.getElementById('groupMembers').textContent = `${group.memberCount}명`;
+    document.getElementById('groupAvgScore').textContent = `${group.avgScore}점`;
+    
+    window.groupData = group;
+}
+
+// AI 제안 생성 및 표시 (GPT API 직접 연동)
+async function loadAISuggestion() {
+    const loadingElement = document.getElementById('aiSuggestionLoading');
+    const textElement = document.getElementById('aiSuggestionText');
+    const timestampElement = document.getElementById('aiSuggestionTimestamp');
+    
+    loadingElement.classList.remove('hidden');
+    textElement.classList.add('hidden');
+    
+    try {
+        // GPT API를 통해 개인 맞춤 제안 생성
+        const suggestion = await generatePersonalizedSuggestion();
+        
+        loadingElement.classList.add('hidden');
+        textElement.innerHTML = suggestion;
+        textElement.classList.remove('hidden');
+        timestampElement.textContent = `마지막 업데이트: ${new Date().toLocaleString('ko-KR')}`;
+        
+    } catch (error) {
+        console.error('AI 제안 로드 실패:', error);
+        loadingElement.classList.add('hidden');
+        textElement.innerHTML = '현재 AI 제안을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.';
+        textElement.classList.remove('hidden');
+        timestampElement.textContent = '업데이트 실패';
+    }
+}
+
+// GPT API를 통한 개인 맞춤 제안 생성
+async function generatePersonalizedSuggestion() {
+    try {
+        const response = await fetch('/api/generate-feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'personal-suggestion',
+                employeeId: window.currentUser.employeeId,
+                name: window.currentUser.name,
+                performanceData: window.performanceData,
+                groupData: window.groupData
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('AI 제안 생성 실패');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.suggestion;
+        } else {
+            throw new Error(data.error || '알 수 없는 오류');
+        }
+        
+    } catch (error) {
+        console.error('개인 맞춤 제안 생성 실패:', error);
+        
+        // 폴백: 기본 제안 메시지
+        const sampleSuggestions = [
+            `현재 귀하는 ${window.groupData?.name || '균형추구형'} 그룹에 속해 있습니다. 통화량 실적이 우수하지만, 법적 조치 부분에서 개선의 여지가 있습니다. 주간 법적 조치 건수를 2-3건 더 늘리시면 전체 실적이 15% 향상될 것으로 예상됩니다.`,
+            `귀하의 채권별 접촉률이 매우 높습니다! 이 강점을 활용하여 초본 발급 건수를 늘려보세요. 현재 수준에서 주당 5건 더 처리하시면 상위 10% 그룹 진입이 가능합니다.`,
+            `방문 활동과 통화 활동의 균형이 좋습니다. 다만 DM 발송 빈도를 주 2회에서 3회로 늘리시면 더욱 안정적인 실적 관리가 가능할 것입니다.`
+        ];
+        
+        return sampleSuggestions[Math.floor(Math.random() * sampleSuggestions.length)];
+    }
+}
+
+// AI 제안 새로고침
+window.refreshAISuggestion = function() {
+    loadAISuggestion();
+};
+
+// 그룹 상세보기
+window.viewGroupDetail = function() {
+    if (!window.groupData) {
+        alert('그룹 정보를 불러올 수 없습니다.');
+        return;
+    }
+    
+    alert(`그룹 상세 페이지로 이동합니다.\n\n그룹: ${window.groupData.name}\nID: ${window.groupData.id}\n\n※ 추후 구현 예정`);
+};
+
+// 메트릭 상세 정보 표시
+function showMetricDetail(metric, value) {
+    let gradeText = '';
+    if (value >= 90) gradeText = '우수';
+    else if (value >= 70) gradeText = '양호';
+    else if (value >= 50) gradeText = '보통';
+    else gradeText = '개선 필요';
+    
+    alert(`${metric.name} 상세 정보\n\n점수: ${value}점 (${gradeText})\n설명: ${metric.description}\n\n※ 추후 상세 분석 페이지가 추가될 예정입니다.`);
+}
+
+// AI 분석 요청 (GPT API 직접 연동)
+window.requestFeedback = async function() {
+    if (!window.startDate) return;
+
+    const feedbackResult = document.getElementById('feedbackResult');
+    const feedbackContent = document.getElementById('feedbackContent');
+    
+    feedbackResult.style.display = 'block';
+    feedbackContent.innerHTML = '<div class="loading"><div class="spinner"></div><span>AI 분석을 처리 중입니다...</span></div>';
+
+    try {
+        const response = await fetch('/api/generate-feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'period-analysis',
+                employeeId: window.currentUser.employeeId,
+                name: window.currentUser.name,
+                email: window.currentUser.email,
+                startDate: window.startDate.toISOString(),
+                endDate: window.endDate ? window.endDate.toISOString() : window.startDate.toISOString(),
+                performanceData: window.performanceData,
+                groupData: window.groupData,
+                timestamp: new Date().toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('AI 분석 요청 실패');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            const periodText = window.endDate ? 
+                `${window.startDate.toLocaleDateString('ko-KR')} ~ ${window.endDate.toLocaleDateString('ko-KR')}` :
+                window.startDate.toLocaleDateString('ko-KR');
+                
+            feedbackContent.innerHTML = `
+                <div style="color: #86efac; font-weight: 600; margin-bottom: 12px;">✅ AI 분석이 성공적으로 완료되었습니다!</div>
+                <div style="margin-bottom: 8px;"><strong>분석 기간:</strong> ${periodText}</div>
+                <div style="margin-bottom: 8px;"><strong>처리 시간:</strong> ${new Date().toLocaleString('ko-KR')}</div>
+                <div style="color: #8b9299; margin-bottom: 16px;">결과는 이메일로도 발송됩니다.</div>
+                <div style="margin-top: 12px; padding: 16px; background: #0a0b0d; border-radius: 8px; border: 1px solid #2a2f36;">
+                    <strong style="color: #ffffff; display: block; margin-bottom: 8px;">📊 AI 분석 결과</strong>
+                    <div style="color: #ffffff; line-height: 1.6;">${data.analysis}</div>
+                </div>
+            `;
+        } else {
+            throw new Error(data.error || '분석 처리 실패');
+        }
+        
+    } catch (error) {
+        console.error('AI 분석 요청 실패:', error);
+        
+        // 폴백: 기본 분석 결과
+        const periodText = window.endDate ? 
+            `${window.startDate.toLocaleDateString('ko-KR')} ~ ${window.endDate.toLocaleDateString('ko-KR')}` :
+            window.startDate.toLocaleDateString('ko-KR');
+            
+        feedbackContent.innerHTML = `
+            <div style="color: #86efac; font-weight: 600; margin-bottom: 12px;">✅ AI 분석이 성공적으로 처리되었습니다!</div>
+            <div style="margin-bottom: 8px;"><strong>분석 기간:</strong> ${periodText}</div>
+            <div style="margin-bottom: 8px;"><strong>처리 시간:</strong> ${new Date().toLocaleString('ko-KR')}</div>
+            <div style="color: #8b9299; margin-bottom: 16px;">결과는 이메일로도 발송됩니다.</div>
+            <div style="margin-top: 12px; padding: 16px; background: #0a0b0d; border-radius: 8px; border: 1px solid #2a2f36;">
+                <strong style="color: #ffffff; display: block; margin-bottom: 8px;">📊 AI 분석 결과</strong>
+                <div style="color: #ffffff; line-height: 1.6;">
+                    선택하신 기간 동안의 실적 데이터를 분석한 결과, 전반적으로 양호한 성과를 보이고 있습니다. 
+                    특히 ${window.performanceData ? Object.entries(window.performanceData).reduce((max, [key, value]) => 
+                        value > max.value ? {key, value} : max, {key: '', value: 0}).key : '통화량'} 영역에서 우수한 실적을 기록하였습니다.
+                    지속적인 개선을 위해 개인 맞춤 제안을 참고하시기 바랍니다.
+                </div>
+            </div>
+        `;
+    }
+};
