@@ -3,7 +3,7 @@
 // ===== 관리자 실적 업로드 기능 =====
 
 // OpenAI Assistant API 설정
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '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';
 const ASSISTANT_ID = 'asst_uS8QuEgLGIw0SrWSl6yGu1Hy';
 
 // API 상태 확인을 위한 간단한 테스트 함수
