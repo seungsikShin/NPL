@@ -2,56 +2,60 @@
 
 // ===== 관리자 실적 업로드 기능 =====
 
-// OpenAI Assistant API 설정
-const OPENAI_API_KEY = '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';
+// OpenAI Assistant API 설정 (서버 사이드에서 환경변수로 처리)
 const ASSISTANT_ID = 'asst_uS8QuEgLGIw0SrWSl6yGu1Hy';
 
-// API 상태 확인을 위한 간단한 테스트 함수
+// API 엔드포인트 설정
+const API_BASE_URL = '/api/extract-performance';
+
+// API 상태 확인을 위한 간단한 테스트 함수 (서버 API 사용)
 window.testSimpleAPI = async function() {
     try {
-        console.log('=== 간단한 API 테스트 시작 ===');
+        console.log('=== 서버 API 테스트 시작 ===');
         
-        // 1. 기본 API 키 검증
-        const response = await fetch('https://api.openai.com/v1/models', {
-            method: 'GET',
+        const response = await fetch(API_BASE_URL, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                action: 'test-api'
+            })
         });
         
-        console.log('API 응답 상태:', response.status);
-        
-        if (response.status === 401) {
-            alert('❌ API 키가 유효하지 않거나 만료되었습니다.\n\n해결방법:\n1. OpenAI 계정에 로그인\n2. 결제 방법 추가 (최소 $5)\n3. 새 API 키 생성');
-            return false;
-        }
-        
-        if (response.status === 429) {
-            alert('❌ API 사용 한도를 초과했습니다.\n\n해결방법:\n1. OpenAI 대시보드에서 사용량 확인\n2. 결제 방법 추가 또는 크레딧 충전');
-            return false;
-        }
+        console.log('서버 API 응답 상태:', response.status);
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API 오류:', errorText);
-            alert(`❌ API 오류 (${response.status}): ${errorText}`);
+            const errorData = await response.json();
+            console.error('서버 API 오류:', errorData);
+            
+            if (response.status === 500 && errorData.error === 'OpenAI API key not configured') {
+                alert('❌ 서버에 OpenAI API 키가 설정되지 않았습니다.\n\nVercel 대시보드에서 OPENAI_API_KEY 환경변수를 확인하세요.');
+            } else {
+                alert(`❌ API 오류 (${response.status}): ${errorData.error}`);
+            }
             return false;
         }
         
         const data = await response.json();
-        console.log('사용 가능한 모델 수:', data.data?.length || 0);
-        alert(`✅ API 키가 정상 작동합니다!\n사용 가능한 모델: ${data.data?.length || 0}개`);
-        return true;
+        console.log('API 테스트 결과:', data);
+        
+        if (data.success) {
+            alert(`✅ API 키가 정상 작동합니다!\n사용 가능한 모델: ${data.modelCount}개`);
+            return true;
+        } else {
+            alert(`❌ API 테스트 실패: ${data.error}`);
+            return false;
+        }
         
     } catch (error) {
-        console.error('API 테스트 오류:', error);
+        console.error('서버 API 테스트 오류:', error);
         alert(`❌ 네트워크 오류: ${error.message}`);
         return false;
     }
 };
 
-// GPT Assistant API 연결 테스트
+// GPT Assistant API 연결 테스트 (서버 API 사용)
 window.testGPTConnection = async function() {
     const statusEl = document.getElementById('apiStatus');
     
@@ -59,29 +63,35 @@ window.testGPTConnection = async function() {
         statusEl.textContent = '어시스턴트 연결 테스트 중...';
         statusEl.style.color = '#f59e0b';
         
-        console.log('API Key 확인:', OPENAI_API_KEY ? `${OPENAI_API_KEY.substring(0, 10)}...` : '없음');
         console.log('Assistant ID:', ASSISTANT_ID);
         
-        const response = await fetch(`https://api.openai.com/v1/assistants/${ASSISTANT_ID}`, {
-            method: 'GET',
+        const response = await fetch(API_BASE_URL, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'OpenAI-Beta': 'assistants=v2'
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'test-assistant',
+                assistantId: ASSISTANT_ID
+            })
         });
         
-        console.log('API 응답 상태:', response.status);
-        console.log('API 응답 헤더:', response.headers);
+        console.log('서버 API 응답 상태:', response.status);
         
-        if (response.ok) {
-            const assistant = await response.json();
-            console.log('어시스턴트 정보:', assistant);
-            statusEl.textContent = `✅ 어시스턴트 연결 성공 (${assistant.name})`;
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('서버 API 오류:', errorData);
+            throw new Error(`Assistant API 오류: ${response.status} - ${errorData.error}`);
+        }
+        
+        const data = await response.json();
+        console.log('어시스턴트 정보:', data);
+        
+        if (data.success) {
+            statusEl.textContent = `✅ 어시스턴트 연결 성공 (${data.assistant.name})`;
             statusEl.style.color = '#22c55e';
         } else {
-            const errorText = await response.text();
-            console.error('API 오류 응답:', errorText);
-            throw new Error(`Assistant API 오류: ${response.status} - ${errorText}`);
+            throw new Error(data.error || '알 수 없는 오류');
         }
     } catch (error) {
         console.error('GPT Assistant API 연결 테스트 실패:', error);
@@ -194,309 +204,94 @@ async function readExcelFile(file) {
     });
 }
 
-// Chat Completions API로 실적 데이터 추출 (더 간단하고 저렴)
+// Chat Completions API로 실적 데이터 추출 (서버 API 사용)
 async function extractPerformanceWithChatAPI(fileContent, fileName) {
     try {
-        console.log('=== Chat Completions API 실행 시작 ===');
+        console.log('=== 서버 Chat API 실행 시작 ===');
         console.log('파일명:', fileName);
         console.log('파일 내용 길이:', fileContent.length);
         
-        // CSV 파일인지 확인
-        const isCSV = fileName.toLowerCase().endsWith('.csv');
-        let prompt;
-        
-        if (isCSV) {
-            // CSV 파일 처리
-            const lines = fileContent.split('\n').slice(0, 10); // 처음 10줄만 보내기
-            prompt = `다음 CSV 파일에서 직원 실적 데이터를 추출해주세요:
-
-${lines.join('\n')}
-
-다음 JSON 배열 형식으로 응답해주세요:
-[
-  {
-    "employeeId": "사번",
-    "name": "이름", 
-    "call_count": 통화량,
-    "dm_count": DM발송,
-    "document_count": 초본발급,
-    "legal_count": 법적조치,
-    "visit_count": 방문횟수,
-    "contact_rate": 접촉률,
-    "month": "YYYY-MM"
-  }
-]
-
-주의사항:
-- 숫자는 반드시 숫자 타입으로
-- 접촉률은 백분율에서 소수점으로 변환 (예: 88.5% → 88.5)
-- JSON 형식만 응답하고 다른 설명은 제외`;
-        } else {
-            // Excel 파일의 경우 Base64는 너무 크므로 에러 처리
-            throw new Error('Excel 파일은 Chat API로 처리할 수 없습니다. Assistant API를 사용하세요.');
-        }
-        
-        console.log('프롬프트 길이:', prompt.length);
-        
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetch(API_BASE_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'gpt-3.5-turbo', // 더 저렴한 모델 사용
-                messages: [
-                    {
-                        role: 'system',
-                        content: '당신은 데이터 추출 전문가입니다. 주어진 데이터에서 정확한 JSON 형식으로 정보를 추출합니다.'
-                    },
-                    {
-                        role: 'user', 
-                        content: prompt
-                    }
-                ],
-                temperature: 0,
-                max_tokens: 2000
+                action: 'extract-chat',
+                fileContent: fileContent,
+                fileName: fileName
             })
         });
         
-        console.log('Chat API 응답 상태:', response.status);
+        console.log('서버 Chat API 응답 상태:', response.status);
         
         if (!response.ok) {
-            const errorData = await response.text();
-            console.error('Chat API 오류:', errorData);
-            throw new Error(`Chat API 오류: ${response.status} - ${errorData}`);
+            const errorData = await response.json();
+            console.error('서버 Chat API 오류:', errorData);
+            throw new Error(`Chat API 오류: ${response.status} - ${errorData.error}`);
         }
         
         const data = await response.json();
-        console.log('Chat API 응답:', data);
+        console.log('Chat API 결과:', data);
         
-        const responseText = data.choices[0].message.content;
-        console.log('응답 텍스트:', responseText);
-        
-        // JSON 추출
-        const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
-        if (!jsonMatch) {
-            console.error('JSON을 찾을 수 없는 응답:', responseText);
-            throw new Error('응답에서 JSON 데이터를 찾을 수 없습니다.');
+        if (!data.success) {
+            throw new Error(data.error || '데이터 추출 실패');
         }
         
-        const extractedData = JSON.parse(jsonMatch[0]);
-        console.log('추출된 데이터:', extractedData);
-        
-        if (!Array.isArray(extractedData)) {
-            throw new Error('추출된 데이터가 배열 형식이 아닙니다.');
-        }
-        
-        return extractedData;
+        console.log('추출된 데이터 개수:', data.count);
+        return data.data;
         
     } catch (error) {
-        console.error('=== Chat API 오류 ===');
+        console.error('=== 서버 Chat API 오류 ===');
         console.error('오류 메시지:', error.message);
         console.error('=== 오류 종료 ===');
         throw error;
     }
 }
 
-// GPT Assistant API로 실적 데이터 추출
+// GPT Assistant API로 실적 데이터 추출 (서버 API 사용)
 async function extractPerformanceWithAssistant(fileContent, fileName) {
     try {
-        console.log('=== GPT Assistant API 실행 시작 ===');
+        console.log('=== 서버 Assistant API 실행 시작 ===');
         console.log('파일명:', fileName);
         console.log('파일 내용 길이:', fileContent.length);
         
-        // 1. Thread 생성
-        console.log('1. Thread 생성 중...');
-        const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+        const response = await fetch(API_BASE_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({})
-        });
-        
-        console.log('Thread 응답 상태:', threadResponse.status);
-        
-        if (!threadResponse.ok) {
-            const errorText = await threadResponse.text();
-            console.error('Thread 생성 오류:', errorText);
-            throw new Error(`Thread 생성 실패: ${threadResponse.status} - ${errorText}`);
-        }
-        
-        const thread = await threadResponse.json();
-        console.log('Thread 생성 성공:', thread.id);
-        
-        // 2. 메시지 추가
-        console.log('2. 메시지 추가 중...');
-        const messageContent = fileName.toLowerCase().endsWith('.csv') 
-            ? `다음은 직원 실적 데이터가 포함된 CSV 파일입니다:\n\n${fileContent}`
-            : `다음은 직원 실적 데이터가 포함된 Excel 파일입니다 (Base64 인코딩):\n파일명: ${fileName}\n내용: ${fileContent.substring(0, 1000)}...`;
-        
-        console.log('메시지 내용 길이:', messageContent.length);
-        
-        const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                role: 'user',
-                content: messageContent
+                action: 'extract-assistant',
+                fileContent: fileContent,
+                fileName: fileName,
+                assistantId: ASSISTANT_ID
             })
         });
         
-        console.log('메시지 응답 상태:', messageResponse.status);
+        console.log('서버 Assistant API 응답 상태:', response.status);
         
-        if (!messageResponse.ok) {
-            const errorText = await messageResponse.text();
-            console.error('메시지 추가 오류:', errorText);
-            throw new Error(`메시지 추가 실패: ${messageResponse.status} - ${errorText}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('서버 Assistant API 오류:', errorData);
+            throw new Error(`Assistant API 오류: ${response.status} - ${errorData.error}`);
         }
         
-        console.log('메시지 추가 성공');
+        const data = await response.json();
+        console.log('Assistant API 결과:', data);
         
-        // 3. Run 실행
-        console.log('3. Run 실행 중...');
-        const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({
-                assistant_id: ASSISTANT_ID
-            })
-        });
-        
-        console.log('Run 응답 상태:', runResponse.status);
-        
-        if (!runResponse.ok) {
-            const errorText = await runResponse.text();
-            console.error('Run 실행 오류:', errorText);
-            throw new Error(`Run 실행 실패: ${runResponse.status} - ${errorText}`);
+        if (!data.success) {
+            throw new Error(data.error || '데이터 추출 실패');
         }
         
-        const run = await runResponse.json();
-        console.log('Run 실행 성공:', run.id, '상태:', run.status);
-        
-        // 4. Run 완료 대기
-        console.log('4. Run 완료 대기 중...');
-        let runStatus = run;
-        let attempts = 0;
-        const maxAttempts = 60; // 최대 60초 대기로 증가
-        
-        while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
-            if (attempts >= maxAttempts) {
-                console.error('Run 시간 초과, 마지막 상태:', runStatus);
-                throw new Error('Assistant 응답 시간 초과');
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                    'OpenAI-Beta': 'assistants=v2'
-                }
-            });
-            
-            if (!statusResponse.ok) {
-                console.error('Run 상태 확인 오류:', statusResponse.status);
-                throw new Error(`Run 상태 확인 실패: ${statusResponse.status}`);
-            }
-            
-            runStatus = await statusResponse.json();
-            attempts++;
-            
-            console.log(`Run 상태 확인 (${attempts}초):`, runStatus.status);
-            updateProgress(0, 0, `Assistant 처리 중... (${attempts}초) - ${runStatus.status}`);
-        }
-        
-        console.log('Run 최종 상태:', runStatus.status);
-        
-        if (runStatus.status !== 'completed') {
-            console.error('Run 실행 실패, 상태:', runStatus);
-            if (runStatus.last_error) {
-                console.error('Run 오류 정보:', runStatus.last_error);
-            }
-            throw new Error(`Assistant 실행 실패: ${runStatus.status} ${runStatus.last_error ? '- ' + runStatus.last_error.message : ''}`);
-        }
-        
-        // 5. 응답 메시지 가져오기
-        console.log('5. 응답 메시지 가져오기...');
-        const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
-            headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'OpenAI-Beta': 'assistants=v2'
-            }
-        });
-        
-        if (!messagesResponse.ok) {
-            const errorText = await messagesResponse.text();
-            console.error('메시지 가져오기 오류:', errorText);
-            throw new Error(`메시지 가져오기 실패: ${messagesResponse.status}`);
-        }
-        
-        const messages = await messagesResponse.json();
-        console.log('받은 메시지 수:', messages.data?.length || 0);
-        
-        const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
-        
-        if (!assistantMessage) {
-            console.error('전체 메시지:', messages.data);
-            throw new Error('Assistant 응답을 찾을 수 없습니다.');
-        }
-        
-        const responseText = assistantMessage.content[0].text.value;
-        console.log('Assistant 응답 길이:', responseText.length);
-        console.log('Assistant 응답 미리보기:', responseText.substring(0, 500) + '...');
-        
-        // 6. JSON 데이터 추출
-        console.log('6. JSON 데이터 추출 중...');
-        
-        // JSON 배열 찾기 - 더 유연한 패턴 사용
-        const jsonMatch = responseText.match(/\[[\s\S]*?\]/) || responseText.match(/\{[\s\S]*?\}/);
-        if (!jsonMatch) {
-            console.error('JSON 패턴을 찾을 수 없는 응답:', responseText);
-            throw new Error('Assistant 응답에서 JSON 데이터를 찾을 수 없습니다. 응답 내용을 확인해주세요.');
-        }
-        
-        console.log('추출한 JSON 문자열:', jsonMatch[0]);
-        
-        let extractedData;
-        try {
-            extractedData = JSON.parse(jsonMatch[0]);
-        } catch (parseError) {
-            console.error('JSON 파싱 오류:', parseError);
-            console.error('파싱하려던 문자열:', jsonMatch[0]);
-            throw new Error(`JSON 파싱 실패: ${parseError.message}`);
-        }
-        
-        // 배열이 아닌 경우 배열로 변환
-        if (!Array.isArray(extractedData)) {
-            if (typeof extractedData === 'object' && extractedData !== null) {
-                extractedData = [extractedData];
-            } else {
-                throw new Error('추출된 데이터가 올바른 형식이 아닙니다.');
-            }
-        }
-        
-        console.log('추출된 데이터 개수:', extractedData.length);
-        console.log('추출된 데이터 샘플:', extractedData[0]);
-        return extractedData;
+        console.log('추출된 데이터 개수:', data.count);
+        return data.data;
         
     } catch (error) {
-        console.error('=== GPT Assistant API 오류 ===');
+        console.error('=== 서버 Assistant API 오류 ===');
         console.error('오류 메시지:', error.message);
-        console.error('오류 스택:', error.stack);
         console.error('=== 오류 종료 ===');
-        throw new Error(`실적 데이터 추출 실패: ${error.message}`);
+        throw error;
     }
 }
 
