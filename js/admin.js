@@ -1,14 +1,13 @@
-// 관리자 페이지 관련 함수들
+// 관리자 페이지 관련 함수들 (GPT API 직접 연동)
 
-// ===== 관리자 실적 업로드 기능 =====
-
-// OpenAI Assistant API 설정 (서버 사이드에서 환경변수로 처리)
+// GPT Assistant ID
 const ASSISTANT_ID = 'asst_uS8QuEgLGIw0SrWSl6yGu1Hy';
 
 // API 엔드포인트 설정
 const API_BASE_URL = '/api/extract-performance';
+const FEEDBACK_API_URL = '/api/generate-feedback';
 
-// API 상태 확인을 위한 간단한 테스트 함수 (서버 API 사용)
+// API 상태 확인을 위한 간단한 테스트 함수
 window.testSimpleAPI = async function() {
     try {
         console.log('=== 서버 API 테스트 시작 ===');
@@ -55,7 +54,7 @@ window.testSimpleAPI = async function() {
     }
 };
 
-// GPT Assistant API 연결 테스트 (서버 API 사용)
+// GPT Assistant API 연결 테스트
 window.testGPTConnection = async function() {
     const statusEl = document.getElementById('apiStatus');
     
@@ -148,7 +147,7 @@ window.processAdminUpload = async function() {
         } catch (chatError) {
             console.log('Chat API 실패, Assistant API 시도 중...', chatError.message);
             updateProgress(0, 0, 'GPT Assistant API로 데이터 추출 중...');
-            extractedData = await extractPerformanceWithAssistant(fileContent, file.name);
+            extractedData = await extractPerformanceWithAssistantAPI(fileContent, file.name);
         }
         
         updateProgress(0, extractedData.length, `${extractedData.length}명의 실적 데이터 추출 완료`);
@@ -204,10 +203,10 @@ async function readExcelFile(file) {
     });
 }
 
-// Chat Completions API로 실적 데이터 추출 (서버 API 사용)
+// Chat Completions API로 실적 데이터 추출
 async function extractPerformanceWithChatAPI(fileContent, fileName) {
     try {
-        console.log('=== 서버 Chat API 실행 시작 ===');
+        console.log('=== Chat API 실행 시작 ===');
         console.log('파일명:', fileName);
         console.log('파일 내용 길이:', fileContent.length);
         
@@ -223,11 +222,11 @@ async function extractPerformanceWithChatAPI(fileContent, fileName) {
             })
         });
         
-        console.log('서버 Chat API 응답 상태:', response.status);
+        console.log('Chat API 응답 상태:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('서버 Chat API 오류:', errorData);
+            console.error('Chat API 오류:', errorData);
             throw new Error(`Chat API 오류: ${response.status} - ${errorData.error}`);
         }
         
@@ -242,17 +241,17 @@ async function extractPerformanceWithChatAPI(fileContent, fileName) {
         return data.data;
         
     } catch (error) {
-        console.error('=== 서버 Chat API 오류 ===');
+        console.error('=== Chat API 오류 ===');
         console.error('오류 메시지:', error.message);
         console.error('=== 오류 종료 ===');
         throw error;
     }
 }
 
-// GPT Assistant API로 실적 데이터 추출 (서버 API 사용)
-async function extractPerformanceWithAssistant(fileContent, fileName) {
+// GPT Assistant API로 실적 데이터 추출
+async function extractPerformanceWithAssistantAPI(fileContent, fileName) {
     try {
-        console.log('=== 서버 Assistant API 실행 시작 ===');
+        console.log('=== Assistant API 실행 시작 ===');
         console.log('파일명:', fileName);
         console.log('파일 내용 길이:', fileContent.length);
         
@@ -269,11 +268,11 @@ async function extractPerformanceWithAssistant(fileContent, fileName) {
             })
         });
         
-        console.log('서버 Assistant API 응답 상태:', response.status);
+        console.log('Assistant API 응답 상태:', response.status);
         
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('서버 Assistant API 오류:', errorData);
+            console.error('Assistant API 오류:', errorData);
             throw new Error(`Assistant API 오류: ${response.status} - ${errorData.error}`);
         }
         
@@ -288,7 +287,7 @@ async function extractPerformanceWithAssistant(fileContent, fileName) {
         return data.data;
         
     } catch (error) {
-        console.error('=== 서버 Assistant API 오류 ===');
+        console.error('=== Assistant API 오류 ===');
         console.error('오류 메시지:', error.message);
         console.error('=== 오류 종료 ===');
         throw error;
@@ -400,7 +399,7 @@ async function uploadSingleEmployeePerformance(data) {
         await window.firebaseSet(performanceRef, {
             ...performanceData,
             lastUpdated: new Date().toISOString(),
-            uploadMethod: 'admin_assistant_api',
+            uploadMethod: 'admin_gpt_api',
             uploadedBy: window.currentUser?.employeeId || 'admin'
         });
         
@@ -432,12 +431,23 @@ function showUploadProgress(show) {
 
 // 진행률 업데이트
 function updateProgress(current, total, message) {
-    document.getElementById('adminProgressText').textContent = `${current} / ${total}`;
-    document.getElementById('adminProgressDetails').textContent = message;
+    const progressTextEl = document.getElementById('adminProgressText');
+    const progressDetailsEl = document.getElementById('adminProgressDetails');
+    
+    if (progressTextEl) {
+        progressTextEl.textContent = `${current} / ${total}`;
+    }
+    
+    if (progressDetailsEl) {
+        progressDetailsEl.textContent = message;
+    }
     
     if (total > 0) {
         const percentage = (current / total) * 100;
-        document.getElementById('adminProgressBar').style.width = `${percentage}%`;
+        const progressBarEl = document.getElementById('adminProgressBar');
+        if (progressBarEl) {
+            progressBarEl.style.width = `${percentage}%`;
+        }
     }
 }
 
@@ -445,6 +455,8 @@ function updateProgress(current, total, message) {
 function showUploadResult(uploadResult) {
     const resultDiv = document.getElementById('adminUploadResult');
     const contentDiv = document.getElementById('adminUploadResultContent');
+    
+    if (!resultDiv || !contentDiv) return;
     
     const { successCount, failCount, results } = uploadResult;
     
@@ -539,7 +551,7 @@ async function refreshAdminData() {
     }
 }
 
-// ===== 기존 코드 =====
+// ===== 기존 관리자 페이지 코드 =====
 
 // 샘플 직원 데이터 생성 함수
 function generateSampleEmployeesData() {
@@ -595,9 +607,14 @@ window.showAdmin = async function() {
     }
 
     try {
-        // 샘플 데이터 생성
-        window.allEmployeesData = generateSampleEmployeesData();
-        window.filteredEmployeesData = [...window.allEmployeesData];
+        // 실제 Firebase 데이터 로드 시도
+        await refreshAdminData();
+        
+        // 데이터가 없으면 샘플 데이터 생성
+        if (!window.allEmployeesData || window.allEmployeesData.length === 0) {
+            window.allEmployeesData = generateSampleEmployeesData();
+            window.filteredEmployeesData = [...window.allEmployeesData];
+        }
         
         // 관리자 UI 업데이트
         updateAdminStats();
@@ -608,14 +625,22 @@ window.showAdmin = async function() {
         const today = new Date();
         const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
         
-        document.getElementById('startDateFilter').value = thirtyDaysAgo.toISOString().split('T')[0];
-        document.getElementById('endDateFilter').value = today.toISOString().split('T')[0];
+        const startDateFilter = document.getElementById('startDateFilter');
+        const endDateFilter = document.getElementById('endDateFilter');
+        
+        if (startDateFilter) {
+            startDateFilter.value = thirtyDaysAgo.toISOString().split('T')[0];
+        }
+        if (endDateFilter) {
+            endDateFilter.value = today.toISOString().split('T')[0];
+        }
 
         // 이벤트 리스너 추가
         setupAdminEventListeners();
 
         showContent('admin');
     } catch (error) {
+        console.error('관리자 페이지 로드 오류:', error);
         alert('관리자 데이터 로드 중 오류가 발생했습니다: ' + error.message);
     }
 };
@@ -659,14 +684,21 @@ function updateAdminStats(data = window.filteredEmployeesData) {
     const achievementRate = totalEmployees > 0 ? 
         Math.round((data.filter(emp => emp.totalScore >= 80).length / totalEmployees) * 100) : 0;
     
-    if (document.getElementById('totalEmployees')) 
-        document.getElementById('totalEmployees').textContent = totalEmployees.toLocaleString();
-    if (document.getElementById('avgPerformance')) 
-        document.getElementById('avgPerformance').textContent = avgPerformance + '점';
-    if (document.getElementById('excellentEmployees')) 
-        document.getElementById('excellentEmployees').textContent = excellentEmployees.toLocaleString();
-    if (document.getElementById('achievementRateAdmin')) 
-        document.getElementById('achievementRateAdmin').textContent = achievementRate + '%';
+    const elements = {
+        totalEmployees: document.getElementById('totalEmployees'),
+        avgPerformance: document.getElementById('avgPerformance'),
+        excellentEmployees: document.getElementById('excellentEmployees'),
+        achievementRateAdmin: document.getElementById('achievementRateAdmin')
+    };
+    
+    if (elements.totalEmployees) 
+        elements.totalEmployees.textContent = totalEmployees.toLocaleString();
+    if (elements.avgPerformance) 
+        elements.avgPerformance.textContent = avgPerformance + '점';
+    if (elements.excellentEmployees) 
+        elements.excellentEmployees.textContent = excellentEmployees.toLocaleString();
+    if (elements.achievementRateAdmin) 
+        elements.achievementRateAdmin.textContent = achievementRate + '%';
 }
 
 // 그룹 분포 차트 생성
@@ -719,7 +751,9 @@ function updateGroupBarChart(data = window.filteredEmployeesData) {
         // 애니메이션 적용
         setTimeout(() => {
             const bar = barGroup.querySelector('.bar');
-            bar.style.height = `${barHeight}px`;
+            if (bar) {
+                bar.style.height = `${barHeight}px`;
+            }
         }, 100);
     });
 }
@@ -761,11 +795,11 @@ function updateAdvancedTable(data = window.filteredEmployeesData) {
 
 // 필터링 함수
 function applyFilters() {
-    const startDate = document.getElementById('startDateFilter').value;
-    const endDate = document.getElementById('endDateFilter').value;
-    const department = document.getElementById('departmentFilter').value;
-    const group = document.getElementById('groupFilter').value;
-    const searchTerm = document.getElementById('employeeSearch').value.toLowerCase();
+    const startDate = document.getElementById('startDateFilter')?.value;
+    const endDate = document.getElementById('endDateFilter')?.value;
+    const department = document.getElementById('departmentFilter')?.value;
+    const group = document.getElementById('groupFilter')?.value;
+    const searchTerm = document.getElementById('employeeSearch')?.value.toLowerCase();
     
     let filteredData = [...window.allEmployeesData];
     
@@ -807,11 +841,13 @@ function applyFilters() {
 
 // 필터 초기화
 window.clearAllFilters = function() {
-    document.getElementById('startDateFilter').value = '';
-    document.getElementById('endDateFilter').value = '';
-    document.getElementById('departmentFilter').value = '';
-    document.getElementById('groupFilter').value = '';
-    document.getElementById('employeeSearch').value = '';
+    const elements = ['startDateFilter', 'endDateFilter', 'departmentFilter', 'groupFilter', 'employeeSearch'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.value = '';
+        }
+    });
     
     window.filteredEmployeesData = [...window.allEmployeesData];
     updateAdminStats();
@@ -822,7 +858,7 @@ window.clearAllFilters = function() {
 // 테이블 정렬 함수
 function sortTable(column, direction = null) {
     if (!direction) {
-        if (window.currentSort.column === column) {
+        if (window.currentSort?.column === column) {
             direction = window.currentSort.direction === 'asc' ? 'desc' : 'asc';
         } else {
             direction = 'asc';
@@ -890,24 +926,59 @@ function sortTable(column, direction = null) {
 
 // 액션 함수들
 window.viewEmployeeDetail = function(employeeId) {
-    alert(`직원 상세 페이지로 이동합니다.\n\n사번: ${employeeId}\n\n※ 추후 Make.com 연동 시 실제 라우팅이 구현됩니다.`);
+    alert(`직원 상세 페이지로 이동합니다.\n\n사번: ${employeeId}\n\n※ 추후 구현 예정`);
 };
 
 window.sendIndividualFeedback = async function(employeeId) {
     const employee = window.allEmployeesData.find(emp => emp.employeeId === employeeId);
-    if (!employee) return;
+    if (!employee) {
+        alert('직원 정보를 찾을 수 없습니다.');
+        return;
+    }
     
     try {
-        alert(`${employee.name}(${employeeId})에게 AI 피드백을 발송했습니다.\n\n• 총 점수: ${employee.totalScore}점\n• 그룹: ${employee.group.name}\n\n※ 실제 이메일 발송은 Make.com 연동 후 구현됩니다.`);
+        // GPT API를 통해 개인 피드백 생성
+        const response = await fetch(FEEDBACK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'personal-suggestion',
+                employeeId: employee.employeeId,
+                name: employee.name,
+                performanceData: employee.scores,
+                groupData: employee.group
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                alert(`${employee.name}(${employeeId})에게 AI 피드백을 생성했습니다.\n\n【AI 피드백 내용】\n${data.suggestion}\n\n※ 실제 이메일 발송 기능은 추후 구현 예정입니다.`);
+            } else {
+                throw new Error(data.error || '피드백 생성 실패');
+            }
+        } else {
+            throw new Error('피드백 생성 API 호출 실패');
+        }
+        
     } catch (error) {
-        alert('피드백 발송 중 오류가 발생했습니다.');
+        console.error('개인 피드백 생성 오류:', error);
+        alert(`${employee.name}(${employeeId})에게 기본 피드백을 발송했습니다.\n\n• 총 점수: ${employee.totalScore}점\n• 그룹: ${employee.group.name}\n• 순위: ${employee.rank}위\n\n※ AI 피드백 생성 중 오류가 발생하여 기본 메시지로 대체되었습니다.`);
     }
 };
 
 window.viewGroupDetail = function(groupId) {
+    const SAMPLE_GROUPS = {
+        1: { name: '균형추구형', description: '모든 영역에서 균형잡힌 성과' },
+        2: { name: '통화집중형', description: '전화 통화 중심의 업무 스타일' },
+        3: { name: '현장중심형', description: '방문 활동 중심의 업무 스타일' }
+    };
+    
     const groupData = SAMPLE_GROUPS[groupId];
     if (groupData) {
-        alert(`그룹 상세 페이지로 이동합니다.\n\n그룹: ${groupData.name}\nID: ${groupId}\n\n※ 추후 Make.com 연동 시 실제 라우팅이 구현됩니다.`);
+        alert(`그룹 상세 페이지로 이동합니다.\n\n그룹: ${groupData.name}\nID: ${groupId}\n설명: ${groupData.description}\n\n※ 추후 구현 예정`);
     }
 };
 
@@ -948,7 +1019,7 @@ window.exportTableData = function() {
 
 window.generateReport = async function() {
     try {
-        alert('주간/월간 리포트를 생성 중입니다.\n\n생성 완료 후 이메일로 발송됩니다.\n\n※ Make.com 연동 후 실제 리포트 생성이 구현됩니다.');
+        alert('주간/월간 리포트를 생성 중입니다.\n\n생성 완료 후 이메일로 발송됩니다.\n\n※ 추후 구현 예정');
     } catch (error) {
         alert('리포트 생성 중 오류가 발생했습니다.');
     }
@@ -962,13 +1033,76 @@ window.sendBulkFeedback = async function() {
         return;
     }
     
-    const confirmMsg = `현재 필터된 ${selectedEmployees}명의 직원에게 AI 피드백을 일괄 발송하시겠습니까?`;
+    const confirmMsg = `현재 필터된 ${selectedEmployees}명의 직원에게 AI 피드백을 일괄 생성하시겠습니까?`;
     
     if (confirm(confirmMsg)) {
         try {
-            alert(`${selectedEmployees}명에게 AI 피드백을 일괄 발송했습니다.\n\n※ 실제 이메일 발송은 Make.com 연동 후 구현됩니다.`);
+            // 진행 상황 표시
+            const progressDiv = document.createElement('div');
+            progressDiv.innerHTML = `
+                <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1d21; border: 1px solid #2a2f36; border-radius: 12px; padding: 20px; z-index: 10000; min-width: 300px;">
+                    <div style="text-align: center; color: #ffffff; margin-bottom: 16px;">일괄 피드백 생성 중...</div>
+                    <div style="background: #2a2f36; border-radius: 4px; height: 8px; overflow: hidden; margin-bottom: 8px;">
+                        <div id="bulkFeedbackProgress" style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="bulkFeedbackStatus" style="color: #8b9299; font-size: 12px; text-align: center;">0 / ${selectedEmployees}</div>
+                </div>
+            `;
+            document.body.appendChild(progressDiv);
+            
+            // GPT API를 통해 일괄 피드백 생성
+            const response = await fetch(FEEDBACK_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'bulk-feedback',
+                    employeeList: window.filteredEmployeesData.slice(0, 10) // 최대 10명으로 제한
+                })
+            });
+            
+            // 진행 상황 업데이트 (시뮬레이션)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                const progressBar = document.getElementById('bulkFeedbackProgress');
+                const statusText = document.getElementById('bulkFeedbackStatus');
+                
+                if (progressBar) {
+                    progressBar.style.width = `${Math.min(progress, 100)}%`;
+                }
+                if (statusText) {
+                    statusText.textContent = `${Math.min(Math.floor(progress / 10), selectedEmployees)} / ${selectedEmployees}`;
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 500);
+            
+            // 결과 처리
+            if (response.ok) {
+                const data = await response.json();
+                setTimeout(() => {
+                    document.body.removeChild(progressDiv);
+                    
+                    if (data.success) {
+                        alert(`✅ ${data.totalCount}명에게 AI 피드백을 성공적으로 생성했습니다.\n\n※ 실제 이메일 발송 기능은 추후 구현 예정입니다.`);
+                    } else {
+                        alert(`❌ 일괄 피드백 생성 중 오류가 발생했습니다.\n\n오류: ${data.error}`);
+                    }
+                }, 2000);
+            } else {
+                setTimeout(() => {
+                    document.body.removeChild(progressDiv);
+                    alert(`❌ 일괄 피드백 생성 API 호출에 실패했습니다.`);
+                }, 2000);
+            }
+            
         } catch (error) {
-            alert('일괄 피드백 발송 중 오류가 발생했습니다.');
+            console.error('일괄 피드백 생성 오류:', error);
+            alert('일괄 피드백 생성 중 오류가 발생했습니다.');
         }
     }
 };
@@ -984,9 +1118,22 @@ window.createAdmin = async function() {
             registeredAt: new Date().toISOString(),
             isAdmin: true,
             performance: {
-                '2025-06': 120000,
-                '2025-05': 95000,
-                '2025-04': 110000
+                '2025-07': {
+                    call_count: 95,
+                    dm_count: 88,
+                    document_count: 92,
+                    legal_count: 85,
+                    visit_count: 90,
+                    contact_rate: 94.5
+                },
+                '2025-06': {
+                    call_count: 92,
+                    dm_count: 85,
+                    document_count: 89,
+                    legal_count: 82,
+                    visit_count: 87,
+                    contact_rate: 91.2
+                }
             }
         });
         console.log('관리자 계정 생성 완료');
@@ -997,12 +1144,31 @@ window.createAdmin = async function() {
 
 window.createSampleData = async function() {
     const sampleEmployees = [
-        { id: 'A1234567', name: '김철수', email: 'kim@company.com' },
+        { id: 'A1234567', name: '김테스트', email: 'test@company.com' },
         { id: 'B2345678', name: '이영희', email: 'lee@company.com' },
         { id: 'C3456789', name: '박민수', email: 'park@company.com' }
     ];
 
     for (const emp of sampleEmployees) {
+        const performanceData = {
+            '2025-07': {
+                call_count: Math.floor(Math.random() * 30) + 70,
+                dm_count: Math.floor(Math.random() * 25) + 60,
+                document_count: Math.floor(Math.random() * 20) + 75,
+                legal_count: Math.floor(Math.random() * 15) + 50,
+                visit_count: Math.floor(Math.random() * 25) + 65,
+                contact_rate: Math.floor(Math.random() * 20) + 80
+            },
+            '2025-06': {
+                call_count: Math.floor(Math.random() * 30) + 70,
+                dm_count: Math.floor(Math.random() * 25) + 60,
+                document_count: Math.floor(Math.random() * 20) + 75,
+                legal_count: Math.floor(Math.random() * 15) + 50,
+                visit_count: Math.floor(Math.random() * 25) + 65,
+                contact_rate: Math.floor(Math.random() * 20) + 80
+            }
+        };
+
         await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `employees/${emp.id}`), {
             uid: `${emp.id}-uid`,
             name: emp.name,
@@ -1010,11 +1176,7 @@ window.createSampleData = async function() {
             employeeId: emp.id,
             registeredAt: new Date().toISOString(),
             isAdmin: false,
-            performance: {
-                '2025-06': Math.floor(Math.random() * 50000) + 50000,
-                '2025-05': Math.floor(Math.random() * 50000) + 50000,
-                '2025-04': Math.floor(Math.random() * 50000) + 50000
-            }
+            performance: performanceData
         });
     }
     console.log('샘플 데이터 생성 완료');
